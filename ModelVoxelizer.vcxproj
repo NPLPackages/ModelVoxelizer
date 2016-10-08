@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <None Include="services\ModelVoxelizerService.lua" />
+    <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{EE40E66A-DE55-46EB-8A3E-1E8397EC781A}</ProjectGuid>

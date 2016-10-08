@@ -1,13 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="services">
-      <UniqueIdentifier>{fe2daaa5-baf6-4780-ab93-5bb46b4a8af6}</UniqueIdentifier>
+    <Filter Include="Mod">
+      <UniqueIdentifier>{84c34c98-c6da-43b4-b397-3bc9d2e68690}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Mod\ModelVoxelizer">
+      <UniqueIdentifier>{e1763605-ef9a-4d58-b11c-3ba6127183b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Mod\ModelVoxelizer\services">
+      <UniqueIdentifier>{63e5a281-5773-418e-952d-b4891aa4a91c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="services\ModelVoxelizerService.lua">
-      <Filter>services</Filter>
+    <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua">
+      <Filter>Mod\ModelVoxelizer\services</Filter>
     </None>
   </ItemGroup>
 </Project>
