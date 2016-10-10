@@ -10,10 +10,31 @@
     <Filter Include="Mod\ModelVoxelizer\services">
       <UniqueIdentifier>{63e5a281-5773-418e-952d-b4891aa4a91c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Mod\ModelVoxelizer\bmax">
+      <UniqueIdentifier>{d3f1eaa7-87bb-446a-abb8-5548d93c9703}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua">
       <Filter>Mod\ModelVoxelizer\services</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\bmax\BlockCommon.lua">
+      <Filter>Mod\ModelVoxelizer\bmax</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\bmax\BlockModel.lua">
+      <Filter>Mod\ModelVoxelizer\bmax</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\bmax\BMaxModel.lua">
+      <Filter>Mod\ModelVoxelizer\bmax</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\bmax\BMaxNode.lua">
+      <Filter>Mod\ModelVoxelizer\bmax</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\bmax\STLWriter.lua">
+      <Filter>Mod\ModelVoxelizer\bmax</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\bmax\Collision.lua">
+      <Filter>Mod\ModelVoxelizer\bmax</Filter>
     </None>
   </ItemGroup>
 </Project>

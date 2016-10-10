@@ -19,6 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Mod\ModelVoxelizer\bmax\BlockCommon.lua" />
+    <None Include="Mod\ModelVoxelizer\bmax\BlockModel.lua" />
+    <None Include="Mod\ModelVoxelizer\bmax\BMaxModel.lua" />
+    <None Include="Mod\ModelVoxelizer\bmax\BMaxNode.lua" />
+    <None Include="Mod\ModelVoxelizer\bmax\Collision.lua" />
+    <None Include="Mod\ModelVoxelizer\bmax\STLWriter.lua" />
     <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
