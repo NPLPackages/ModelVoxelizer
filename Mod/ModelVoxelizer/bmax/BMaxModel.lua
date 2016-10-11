@@ -17,6 +17,7 @@ NPL.load("(gl)script/ide/math/ShapeAABB.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BMaxNode.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BlockModel.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BlockCommon.lua");
+NPL.load("(gl)script/ide/serialization.lua");
 local BlockCommon = commonlib.gettable("Mod.ModelVoxelizer.bmax.BlockCommon");
 local BlockModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BlockModel");
 local BMaxNode = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxNode");
@@ -36,6 +37,7 @@ function BMaxModel:ctor()
 	self.m_nodes = {};
 	self.m_blockModels = {};
 	self.unit_value = nil;
+	self.blocks = {};
 
 end
 function BMaxModel:SetUnit(v)
@@ -72,6 +74,7 @@ end
 -- public: load from array of blocks
 -- @param blocks: array of {x,y,z,id, data, serverdata}
 function BMaxModel:LoadFromBlocks(blocks)
+	self.blocks = blocks;
 	self:InitFromBlocks(blocks);
 	self:CalculateVisibleBlocks();
 	if(self:IsAutoScale())then
@@ -248,4 +251,27 @@ function BMaxModel:GetTotalTriangleCount()
 		cnt = cnt + cube:GetFaceCount()*2;
 	end	
 	return cnt;
+end
+--get plain bmax text
+function BMaxModel:GetText()
+	local blocks = commonlib.copy(self.blocks);
+	local k,v;
+	for k,v in ipairs(blocks) do
+		if(not v[4])then
+			v[4] = 10;
+		end
+	end
+	local content = string.format("<pe:blocktemplate><pe:blocks>%s</pe:blocks></pe:blocktemplate>",commonlib.serialize(blocks));
+	return content;
+end
+-- sava as plain text file
+function BMaxModel:SaveAsText(output_file_name)
+	local text = self:GetText();
+	ParaIO.CreateDirectory(output_file_name);
+	local file = ParaIO.open(output_file_name, "w");
+	if(file:IsValid()) then
+		file:WriteString(text);
+		file:close();
+		return true;
+	end
 end

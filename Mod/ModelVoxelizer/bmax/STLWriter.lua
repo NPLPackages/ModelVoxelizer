@@ -14,7 +14,7 @@ writer:SaveAsText(filename);
 writer:SaveAsBinary(filename);
 ------------------------------------------------------------
 ]]
-NPL.load("(gl)Mod/STLExporter/BMaxModel.lua");
+NPL.load("(gl)Mod/ModelVoxelizer/bmax/BMaxModel.lua");
 NPL.load("(gl)script/ide/math/vector.lua");
 local vector3d = commonlib.gettable("mathlib.vector3d");
 local BMaxModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxModel");
@@ -110,51 +110,61 @@ function STLWriter:ConvertToZUp(v1,v2,v3)
 end
 -- save as plain-text stl file
 function STLWriter:SaveAsText(output_file_name)
-	if(not self:IsValid()) then
-		return false;
-	end
-
-	local get_vertex = BMaxModel.get_vertex;
+	local text = self:GetText();
 	ParaIO.CreateDirectory(output_file_name);
-	
+	local file = ParaIO.open(output_file_name, "w");
+	if(file:IsValid()) then
+		file:WriteString(text);
+		file:close();
+		return true;
+	end
+end
+-- get plain text content
+function STLWriter:GetText()
+	if(not self:IsValid()) then
+		return "";
+	end
+	local content = "";
+	local get_vertex = BMaxModel.get_vertex;
 	local isYUp = self:IsYAxisUp();
-
+	local function write_string(s)
+		if(not s)then
+			return
+		end	
+		content = content .. s;
+	end
 	local function write_face(file,vertex_1,vertex_2,vertex_3)
 		local a = vertex_3 - vertex_1;
 		local b = vertex_3 - vertex_2;
 		local normal = a*b;
 		normal:normalize();
 		if(isYUp) then
-			file:WriteString(string.format(" facet normal %f %f %f\n", normal[1], normal[2], normal[3]));
-			file:WriteString(string.format("  outer loop\n"));
-			file:WriteString(string.format("  vertex %f %f %f\n", vertex_1[1], vertex_1[2], vertex_1[3]));
-			file:WriteString(string.format("  vertex %f %f %f\n", vertex_2[1], vertex_2[2], vertex_2[3]));
-			file:WriteString(string.format("  vertex %f %f %f\n", vertex_3[1], vertex_3[2], vertex_3[3]));
+			write_string(string.format(" facet normal %f %f %f\n", normal[1], normal[2], normal[3]));
+			write_string(string.format("  outer loop\n"));
+			write_string(string.format("  vertex %f %f %f\n", vertex_1[1], vertex_1[2], vertex_1[3]));
+			write_string(string.format("  vertex %f %f %f\n", vertex_2[1], vertex_2[2], vertex_2[3]));
+			write_string(string.format("  vertex %f %f %f\n", vertex_3[1], vertex_3[2], vertex_3[3]));
 		else
 			-- invert y,z and change the triangle winding
-			file:WriteString(string.format(" facet normal %f %f %f\n", normal[1], normal[3], normal[2]));
-			file:WriteString(string.format("  outer loop\n"));
-			file:WriteString(string.format("  vertex %f %f %f\n", vertex_1[1], vertex_1[3], vertex_1[2]));
-			file:WriteString(string.format("  vertex %f %f %f\n", vertex_3[1], vertex_3[3], vertex_3[2]));
-			file:WriteString(string.format("  vertex %f %f %f\n", vertex_2[1], vertex_2[3], vertex_2[2]));
+			write_string(string.format(" facet normal %f %f %f\n", normal[1], normal[3], normal[2]));
+			write_string(string.format("  outer loop\n"));
+			write_string(string.format("  vertex %f %f %f\n", vertex_1[1], vertex_1[3], vertex_1[2]));
+			write_string(string.format("  vertex %f %f %f\n", vertex_3[1], vertex_3[3], vertex_3[2]));
+			write_string(string.format("  vertex %f %f %f\n", vertex_2[1], vertex_2[3], vertex_2[2]));
 		end
-		file:WriteString(string.format("  endloop\n"));
-		file:WriteString(string.format(" endfacet\n"));
+		write_string(string.format("  endloop\n"));
+		write_string(string.format(" endfacet\n"));
 	end
-	local file = ParaIO.open(output_file_name, "w");
-	if(file:IsValid()) then
-		local name = "ParaEngine";
-		file:WriteString(string.format("solid %s\n",name));
-		for _, cube in ipairs(self.model.m_blockModels) do
-			for nFaceIndex = 0, cube:GetFaceCount()-1 do
-				local v1,v2,v3 = cube:GetFaceTriangle(nFaceIndex, 0);
-				write_face(file,v1,v2,v3);
-				v1,v2,v3 = cube:GetFaceTriangle(nFaceIndex, 1);
-				write_face(file,v1,v2,v3);
-			end
-		end	
-		file:WriteString(string.format("endsolid %s\n",name));
-		file:close();
-		return true;
-	end
+	local name = "ParaEngine";
+	write_string(string.format("solid %s\n",name));
+	for _, cube in ipairs(self.model.m_blockModels) do
+		for nFaceIndex = 0, cube:GetFaceCount()-1 do
+			local v1,v2,v3 = cube:GetFaceTriangle(nFaceIndex, 0);
+			write_face(file,v1,v2,v3);
+			v1,v2,v3 = cube:GetFaceTriangle(nFaceIndex, 1);
+			write_face(file,v1,v2,v3);
+		end
+	end	
+	write_string(string.format("endsolid %s\n",name));
+	return content;
 end

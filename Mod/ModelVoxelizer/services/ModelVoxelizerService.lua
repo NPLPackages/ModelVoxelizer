@@ -27,12 +27,34 @@ local STLWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.STLWriter");
 local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
 local CSGVector = commonlib.gettable("Mod.NplCadLibrary.csg.CSGVector");
 local ModelVoxelizerService = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService");
-local MAX_NUM = 16;
-function ModelVoxelizerService.upload(buffer)
+local MAX_NUM = 12;
+-- changes content by input_format
+-- @param buffer:input content
+-- @param input_format:stl or bmax
+-- @param output_format:stl or bmax
+-- return a base64 string
+function ModelVoxelizerService.voxelizer(buffer,block_length,input_format,output_format)
+	LOG.std(nil, "info", "voxelizer", "block_length:%d input_format:%s output_format:%s",block_length,input_format,output_format);
+	if(not buffer)then
+		return
+	end
+	block_length = block_length or 1;
+	input_format = input_format or "stl"
+	output_format = output_format or "stl"
+
 	local data = Encoding.unbase64(buffer);
-	local polygons,aabb = ModelVoxelizerService.load_stl(data)
-	ModelVoxelizerService.voxelizer(polygons,aabb);
-	return true;
+	if(input_format == "stl")then
+		local polygons,aabb = ModelVoxelizerService.load_stl(data)
+		local bmax_model = ModelVoxelizerService.buildBMaxModel(polygons,aabb,block_length);
+		local content;
+		if(output_format == "stl")then
+			content = ModelVoxelizerService.getStlContent(bmax_model);
+		elseif(output_format == "bmax")then
+			content = ModelVoxelizerService.getBMaxContent(bmax_model);
+		end
+		content = Encoding.base64(content);
+		return content;
+	end
 end
 function ModelVoxelizerService.load_stl(buffer)
 	if(not buffer)then
@@ -68,10 +90,28 @@ function ModelVoxelizerService.load_stl(buffer)
 	end
 	return polygons,aabb;
 end
+
+function ModelVoxelizerService.getStlContent(bmax_model)
+	if(not bmax_model)then
+		return
+	end
+	local writer = STLWriter:new();
+	writer:LoadModel(bmax_model);
+	writer:SetYAxisUp(false);
+	return writer:GetText();
+	
+end
+function ModelVoxelizerService.getBMaxContent(bmax_model)
+	if(not bmax_model)then
+		return
+	end
+	return bmax_model:GetText();
+end
 -- Get voxel model
 -- @param polygons:the array of {pos = { x,y,z} }
 -- @param block_length:the max length of block which can be voxel.
-function ModelVoxelizerService.voxelizer(polygons,aabb,block_length)
+-- return a instance of BMaxModel.
+function ModelVoxelizerService.buildBMaxModel(polygons,aabb,block_length)
 	if(not polygons or not aabb)then
 		return;
 	end
@@ -101,7 +141,9 @@ function ModelVoxelizerService.voxelizer(polygons,aabb,block_length)
 
 		local block_length_min = max_block_length_half - block_length_half + 1;
 		local block_length_max = max_block_length_half + block_length_half;
-
+		if(block_length_max == 0)then
+			block_length_max = 1;
+		end
 		return block_length_min,block_length_max;
 	end
 	
@@ -154,11 +196,9 @@ function ModelVoxelizerService.voxelizer(polygons,aabb,block_length)
 	end
 	local model = BMaxModel:new();
 	model:LoadFromBlocks(blocks);
+	LOG.std(nil, "info", "voxelizer", "BMaxModel created successfully.");
 
-	local writer = STLWriter:new();
-	writer:LoadModel(model);
-	writer:SetYAxisUp(false);
-	writer:SaveAsText("test/test_voxel.stl");
+	return model;
 end
 -- polygon is a array of {pos = {x,y,z} normal = {normal_x,normal_y,normal_z}, }
 function ModelVoxelizerService.intersectPolygon(aabb,polygon)
