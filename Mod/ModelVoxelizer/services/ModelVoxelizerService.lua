@@ -7,6 +7,20 @@ use the lib:
 ------------------------------------------------------------
 NPL.load("(gl)Mod/ModelVoxelizer/services/ModelVoxelizerService.lua");
 local ModelVoxelizerService = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService");
+
+local file = ParaIO.open("test/a.stl", "r");
+if(file:IsValid()) then
+	local text = file:GetText();
+	local content = ModelVoxelizerService.voxelizer(text,false,32);
+	file:close();
+
+	ParaIO.DeleteFile("test/a_out.stl");
+	local out_file = ParaIO.open("test/a_out.stl", "w");
+	if(out_file:IsValid())then
+		out_file:WriteString(content);
+		out_file:close();
+	end
+end					
 ------------------------------------------------------------
 ]]
 NPL.load("(gl)script/ide/math/vector.lua");
@@ -27,13 +41,14 @@ local STLWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.STLWriter");
 local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
 local CSGVector = commonlib.gettable("Mod.NplCadLibrary.csg.CSGVector");
 local ModelVoxelizerService = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService");
-local MAX_NUM = 12;
+local MAX_NUM = 256;
 -- changes content by input_format
 -- @param buffer:input content
+-- @param bBase64:if input buffer is Base64 string
 -- @param input_format:stl or bmax
 -- @param output_format:stl or bmax
 -- return a base64 string
-function ModelVoxelizerService.voxelizer(buffer,block_length,input_format,output_format)
+function ModelVoxelizerService.voxelizer(buffer,bBase64, block_length,input_format,output_format)
 	LOG.std(nil, "info", "voxelizer", "block_length:%d input_format:%s output_format:%s",block_length,input_format,output_format);
 	if(not buffer)then
 		return
@@ -42,7 +57,12 @@ function ModelVoxelizerService.voxelizer(buffer,block_length,input_format,output
 	input_format = input_format or "stl"
 	output_format = output_format or "stl"
 
-	local data = Encoding.unbase64(buffer);
+	local data;
+	if(bBase64)then
+		data = Encoding.unbase64(buffer);
+	else
+		data = buffer;
+	end
 	if(input_format == "stl")then
 		local polygons,aabb = ModelVoxelizerService.load_stl(data)
 		local bmax_model = ModelVoxelizerService.buildBMaxModel(polygons,aabb,block_length);
@@ -52,10 +72,13 @@ function ModelVoxelizerService.voxelizer(buffer,block_length,input_format,output
 		elseif(output_format == "bmax")then
 			content = ModelVoxelizerService.getBMaxContent(bmax_model);
 		end
-		content = Encoding.base64(content);
+		if(bBase64)then
+			content = Encoding.base64(content);
+		end
 		return content;
 	end
 end
+-- return an array of { pos = {x,y,z}, normal = {x,y,z}, } and an instance of <ShapeBox>
 function ModelVoxelizerService.load_stl(buffer)
 	if(not buffer)then
 		return
@@ -108,9 +131,10 @@ function ModelVoxelizerService.getBMaxContent(bmax_model)
 	return bmax_model:GetText();
 end
 -- Get voxel model
--- @param polygons:the array of {pos = { x,y,z} }
+-- @param polygons:an array of {pos = { x,y,z}, normal = {normal_x,normal_y,normal_z},  }
+-- @param aabb:an instance of <ShapeBox>
 -- @param block_length:the max length of block which can be voxel.
--- return a instance of BMaxModel.
+-- return an instance of <BMaxModel>.
 function ModelVoxelizerService.buildBMaxModel(polygons,aabb,block_length)
 	if(not polygons or not aabb)then
 		return;
@@ -119,101 +143,108 @@ function ModelVoxelizerService.buildBMaxModel(polygons,aabb,block_length)
 	block_length = math.min(block_length,MAX_NUM);
 	block_length = math.max(block_length,1);
 
-	local min_pos = aabb:GetMin();
-	local start_x = min_pos[1];
-	local start_y = min_pos[2];
-	local start_z = min_pos[3];
+	local shape_aabb = ShapeAABB:new();
+	shape_aabb:SetMinMax(aabb:GetMin(),aabb:GetMax());
 
-	local width = aabb:GetWidth();
-	local height = aabb:GetHeight();
-	local depth = aabb:GetDepth();
+	local extent = shape_aabb.mExtents;
+	local max_dist = math.max(extent[1],extent[2]);
+	max_dist = math.max(max_dist,extent[3]);
+	max_dist = max_dist * 2;
 
-	local max_dist = math.max(width,height);
-	max_dist = math.max(max_dist,depth);
+	block_size = max_dist / block_length;
+	LOG.std(nil, "info", "voxelizer", "buildBMaxModel polygons:%d max_dist:%f block_length:%d(MAX_NUM:%d) block_size:%f", #polygons,max_dist,block_length,MAX_NUM,block_size);
 
-	local x_block_length = math.floor((width / max_dist) * block_length);
-	local y_block_length = math.floor((height / max_dist) * block_length);
-	local z_block_length = math.floor((depth / max_dist) * block_length);
-
-	local function get_min_max(block_length,max_block_length)
-		local max_block_length_half = math.floor(max_block_length* 0.5);
-		local block_length_half = math.floor(block_length * 0.5);
-
-		local block_length_min = max_block_length_half - block_length_half + 1;
-		local block_length_max = max_block_length_half + block_length_half;
-		if(block_length_max == 0)then
-			block_length_max = 1;
-		end
-		return block_length_min,block_length_max;
-	end
-	
-	local x_min,x_max = get_min_max(x_block_length,block_length);
-	local y_min,y_max = get_min_max(y_block_length,block_length);
-	local z_min,z_max = get_min_max(z_block_length,block_length);
-
-	local center_x = start_x + width/2;
-	local center_y = start_y + height/2;
-	local center_z = start_z + depth/2;
-
-	local offset_x = 0 - center_x;
-	local offset_y = 0 - center_y;
-	local offset_z = 0 - center_z;
-
-	LOG.std(nil, "info", "voxelizer", "block length x:%d,y:%d,z:%d,max:%d ",x_block_length,y_block_length,z_block_length,block_length);
-	LOG.std(nil, "info", "voxelizer", "x_min:%d x_max:%d,y_min:%d y_max:%d,z_min:%d z_max:%d", x_min,x_max,y_min,y_max,z_min,z_max);
-	LOG.std(nil, "info", "voxelizer", "polygons lenght is:%d", #polygons);
-	local block_size = max_dist/block_length;
 	local block_maps = {};
 	local blocks = {};
 
-	for x = x_min,x_max do
-		for y = y_min,y_max do
-			for z = z_min,z_max do
-				local c_x = (x-1)*block_size + block_size * 0.5 + (center_x - max_dist * 0.5);
-				local c_y = (y-1)*block_size + block_size * 0.5 + (center_y - max_dist * 0.5);
-				local c_z = (z-1)*block_size + block_size * 0.5 + (center_z - max_dist * 0.5);
-
-				local size = block_size * 0.5;
-				local aabb = ShapeAABB:new();
-				aabb.mCenter = vector3d:new({c_x,c_y,c_z});
-				aabb.mExtents = vector3d:new({size,size,size});
-				local polygon;
-				for __, polygon in ipairs(polygons) do
-					if(ModelVoxelizerService.intersectPolygon(aabb,polygon))then
-						local id = string.format("%d_%d_%d",x,y,z);
-						if(not block_maps[id])then
-							aabb.mCenter:add(offset_x,offset_y,offset_z);
-							block_maps[id] = aabb;
-							table.insert(blocks,{x,y,z});
-						end
-					end
-				end
-				z = z + 1;
-			end
-			y = y + 1;
-		end
-		x = x + 1;
+	local polygon;
+	for __, polygon in ipairs(polygons) do
+		local aabb,changed_polygon = ModelVoxelizerService.buildShapeAABB(shape_aabb,polygon,block_length)
+		ModelVoxelizerService.buildBlocks(blocks,block_maps,changed_polygon,aabb,block_length,block_size)
 	end
+
+
 	local model = BMaxModel:new();
 	model:LoadFromBlocks(blocks);
-	LOG.std(nil, "info", "voxelizer", "BMaxModel created successfully.");
+	LOG.std(nil, "info", "voxelizer", "BMaxModel created successfully. blocks length:%d",#blocks);
 
 	return model;
 end
--- polygon is a array of {pos = {x,y,z} normal = {normal_x,normal_y,normal_z}, }
+-- build polygon's aabb
+-- @param shape_aabb:an instance of <ShapeAABB>
+-- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, }
+-- @param block_length: max block number
+-- return aabb,changed_polygon
+function ModelVoxelizerService.buildShapeAABB(shape_aabb,polygon,block_length)
+	local center = shape_aabb.mCenter;
+	local extent = shape_aabb.mExtents;
+	local changed_polygon = {};
+	local box = ShapeBox:new():SetPointBox(0,0,0);
+	local k,v;
+	for k,v in ipairs(polygon) do
+		local x = v.pos[1] - center[1];
+		local y = v.pos[2] - center[2];
+		local z = v.pos[3] - center[3];
+
+		box:Extend(x,y,z);
+
+		table.insert(changed_polygon,{
+			pos = {x,y,z},
+			normat = {v.normal_x,v.normal_y,v.normal_z}
+		})
+	end
+	local aabb = ShapeAABB:new();
+	aabb:SetMinMax(box:GetMin(), box:GetMax());
+	return aabb,changed_polygon;
+end
+-- build blocks for BMaxModel.
+function ModelVoxelizerService.buildBlocks(blocks,block_maps,changed_polygon,aabb,block_max_num,block_size)
+	local center = aabb.mCenter;
+	local min = aabb:GetMin();
+	local max = aabb:GetMax();
+
+	local half_num = math.ceil(block_max_num/2);
+	local half_size = block_size * 0.5;
+	local center_x = math.floor(center[1]/block_size);
+	local center_y = math.floor(center[2]/block_size);
+	local center_z = math.floor(center[3]/block_size);
+
+	
+	local start_x = math.floor(min[1]/block_size);
+	local start_y = math.floor(min[2]/block_size);
+	local start_z = math.floor(min[3]/block_size);
+
+	local end_x = math.floor(max[1]/block_size);
+	local end_y = math.floor(max[2]/block_size);
+	local end_z = math.floor(max[3]/block_size);
+	LOG.std(nil, "info", "voxelizer", "buildBlocks x:%d->%d y:%d->%d z:%d->%d", start_x,end_x,start_y,end_y,start_z,end_z);
+	local test_aabb = ShapeAABB:new();
+	local x,y,z;
+	for x = start_x,end_x do
+		for y = start_y,end_y do
+			for z = start_z,end_z do
+				local id = string.format("id_%d_%d_%d",x,y,z);
+				if(not block_maps[id])then
+					test_aabb:SetCenterExtentValues(x * block_size,y * block_size,z * block_size,half_size,half_size,half_size);
+					if(ModelVoxelizerService.intersectPolygon(test_aabb,changed_polygon))then
+						block_maps[id] = true;
+						local x_index = x + half_num;
+						local y_index = y + half_num;
+						local z_index = z + half_num;
+						table.insert(blocks,{x_index,y_index,z_index});
+					end
+				end
+			end
+		end
+	end
+end
+-- hittest between aabb and polygon.
+-- @param aabb:an instance of <ShapeAABB>
+-- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, }
 function ModelVoxelizerService.intersectPolygon(aabb,polygon)
 	local a = CSGVector:new():init(polygon[1].pos);
 	local b = CSGVector:new():init(polygon[2].pos);
 	local c = CSGVector:new():init(polygon[3].pos);
 	return Collision.isIntersectionTriangleAABB (a, b, c, aabb); 
-end
-function ModelVoxelizerService.contains(aabb,x,y,z)
-	if(not aabb:IsValid())then
-		return
-	end	
-	local min_x,min_y,min_z = aabb:GetMinValues();
-	local max_x,max_y,max_z = aabb:GetMaxValues();
-
-	return (x >= min_x and y >= min_y and z >= min_z and x <= max_x and y <= max_y and z <= max_z);
 end
 
