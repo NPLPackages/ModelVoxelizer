@@ -110,12 +110,14 @@ function STLWriter:ConvertToZUp(v1,v2,v3)
 end
 -- save as plain-text stl file
 function STLWriter:SaveAsText(output_file_name)
+	LOG.std(nil, "info", "STLWriter", "SaveAsText:%s",output_file_name);
 	local text = self:GetText();
 	ParaIO.CreateDirectory(output_file_name);
 	local file = ParaIO.open(output_file_name, "w");
 	if(file:IsValid()) then
 		file:WriteString(text);
 		file:close();
+		LOG.std(nil, "info", "STLWriter", "SaveAsText end");
 		return true;
 	end
 end
@@ -124,14 +126,16 @@ function STLWriter:GetText()
 	if(not self:IsValid()) then
 		return "";
 	end
-	local content = "";
+	local content_list = {};
+	--local content = "";
 	local get_vertex = BMaxModel.get_vertex;
 	local isYUp = self:IsYAxisUp();
 	local function write_string(s)
 		if(not s)then
 			return
 		end	
-		content = content .. s;
+		table.insert(content_list,s);
+		--content = content .. s;
 	end
 	local function write_face(file,vertex_1,vertex_2,vertex_3)
 		local a = vertex_3 - vertex_1;
@@ -155,6 +159,7 @@ function STLWriter:GetText()
 		write_string(string.format("  endloop\n"));
 		write_string(string.format(" endfacet\n"));
 	end
+	LOG.std(nil, "info", "STLWriter", "m_blockModels:%d",#self.model.m_blockModels);
 	local name = "ParaEngine";
 	write_string(string.format("solid %s\n",name));
 	for _, cube in ipairs(self.model.m_blockModels) do
@@ -166,5 +171,6 @@ function STLWriter:GetText()
 		end
 	end	
 	write_string(string.format("endsolid %s\n",name));
+	local content = table.concat(content_list);
 	return content;
 end
