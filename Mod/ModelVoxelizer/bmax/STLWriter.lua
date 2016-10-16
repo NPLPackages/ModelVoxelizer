@@ -111,20 +111,26 @@ end
 -- save as plain-text stl file
 function STLWriter:SaveAsText(output_file_name)
 	LOG.std(nil, "info", "STLWriter", "SaveAsText:%s",output_file_name);
-	local text = self:GetText();
+	local text = self:GetTextList();
 	ParaIO.CreateDirectory(output_file_name);
 	local file = ParaIO.open(output_file_name, "w");
 	if(file:IsValid()) then
-		file:WriteString(text);
+		local content_list = self:GetTextList();
+		if(content_list)then
+			local k,v;
+			for k,v in ipairs(content_list) do
+				file:WriteString(text);
+			end
+		end
 		file:close();
 		LOG.std(nil, "info", "STLWriter", "SaveAsText end");
 		return true;
 	end
 end
--- get plain text content
-function STLWriter:GetText()
+-- get plain text content list
+function STLWriter:GetTextList()
 	if(not self:IsValid()) then
-		return "";
+		return;
 	end
 	local content_list = {};
 	--local content = "";
@@ -135,7 +141,6 @@ function STLWriter:GetText()
 			return
 		end	
 		table.insert(content_list,s);
-		--content = content .. s;
 	end
 	local function write_face(file,vertex_1,vertex_2,vertex_3)
 		local a = vertex_3 - vertex_1;
@@ -171,6 +176,6 @@ function STLWriter:GetText()
 		end
 	end	
 	write_string(string.format("endsolid %s\n",name));
-	local content = table.concat(content_list);
-	return content;
+	LOG.std(nil, "info", "STLWriter", "content_list:%d",#content_list);
+	return content_list;
 end

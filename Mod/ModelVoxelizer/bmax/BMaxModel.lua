@@ -18,6 +18,7 @@ NPL.load("(gl)Mod/ModelVoxelizer/bmax/BMaxNode.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BlockModel.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BlockCommon.lua");
 NPL.load("(gl)script/ide/serialization.lua");
+NPL.load("(gl)script/ide/mathlib.lua");
 local BlockCommon = commonlib.gettable("Mod.ModelVoxelizer.bmax.BlockCommon");
 local BlockModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BlockModel");
 local BMaxNode = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxNode");

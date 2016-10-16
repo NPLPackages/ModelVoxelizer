@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua">
-      <Filter>Mod\ModelVoxelizer\services</Filter>
-    </None>
     <None Include="Mod\ModelVoxelizer\bmax\BlockCommon.lua">
       <Filter>Mod\ModelVoxelizer\bmax</Filter>
     </None>
@@ -35,6 +32,12 @@
     </None>
     <None Include="Mod\ModelVoxelizer\bmax\Collision.lua">
       <Filter>Mod\ModelVoxelizer\bmax</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\services\ModelVoxelizer.lua">
+      <Filter>Mod\ModelVoxelizer\services</Filter>
+    </None>
+    <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua">
+      <Filter>Mod\ModelVoxelizer\services</Filter>
     </None>
   </ItemGroup>
 </Project>
