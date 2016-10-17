@@ -157,3 +157,15 @@ function BlockModel:GetFaceTriangle(nFaceIndex, nTriangleIndex)
 		return vertices[nFirstVertexIndex].position, vertices[nFirstVertexIndex+2].position, vertices[nFirstVertexIndex+3].position;
 	end
 end
+-- @param nFaceIndex: 0 based index
+-- @param nTriangleIndex: 0 for first, 1 for second
+-- @return v1,v2,v3 on the face
+function BlockModel:GetFaceTriangle2(nFaceIndex, nTriangleIndex)
+	local nFirstVertexIndex = nFaceIndex*4+1;
+	local vertices = self.m_vertices;
+	if(nTriangleIndex == 0) then
+		return vertices[nFirstVertexIndex], vertices[nFirstVertexIndex+1], vertices[nFirstVertexIndex+2];
+	else
+		return vertices[nFirstVertexIndex], vertices[nFirstVertexIndex+2], vertices[nFirstVertexIndex+3];
+	end
+end

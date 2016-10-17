@@ -7,7 +7,12 @@ use the lib:
 ------------------------------------------------------------
 NPL.load("(gl)Mod/ModelVoxelizer/services/ModelVoxelizerService.lua");
 local ModelVoxelizerService = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService");
-ModelVoxelizerService.test("test/a.stl","test/a_out.stl",16);
+ModelVoxelizerService.test("test/a.stl","test/a_out.stl",false,16,nil,nil)
+ModelVoxelizerService.test("test/a.stl","test/a_out.bmax",false,16,nil,"bmax")
+
+ModelVoxelizerService.test("test/a.bmax","test/a_out.stl",false,16,"bmax","stl")
+ModelVoxelizerService.test("test/a.bmax","test/a_out.bmax",false,16,"bmax","bmax")
+
 ------------------------------------------------------------
 ]]
 NPL.load("(gl)script/ide/commonlib.lua");
@@ -38,6 +43,7 @@ ModelVoxelizerService.max_thread = 10;
 
 ModelVoxelizerService.working_thread_list = {};
 ModelVoxelizerService.blocks = {};
+ModelVoxelizerService.blocks_map = {};
 ModelVoxelizerService.id_index = 0;
 
 ModelVoxelizerService.bBase64 = nil;
@@ -50,6 +56,7 @@ ModelVoxelizerService.callback = nil;
 function ModelVoxelizerService.reset()
 	ModelVoxelizerService.working_thread_list = {};
 	ModelVoxelizerService.blocks = {};
+	ModelVoxelizerService.blocks_map = {};
 
 	ModelVoxelizerService.id_index = 0;
 
@@ -131,7 +138,11 @@ function ModelVoxelizerService.processed(msg)
 	LOG.std(nil, "info", "ModelVoxelizerService", "working_thread_list length :%d",ModelVoxelizerService.getLength());
 	local k,v;
 	for k,v in ipairs(blocks) do
-		table.insert(ModelVoxelizerService.blocks,v);
+		local id = string.format("id_%d_%d_%d",v[1],v[2],v[3]);
+		if(not ModelVoxelizerService.blocks_map[id])then
+			ModelVoxelizerService.blocks_map[id] = true;
+			table.insert(ModelVoxelizerService.blocks,v);
+		end
 	end
 
 	if(ModelVoxelizerService.isEmpty())then
@@ -139,24 +150,37 @@ function ModelVoxelizerService.processed(msg)
 		bmax_model:LoadFromBlocks(ModelVoxelizerService.blocks);	
 
 		local content;
-		local preview_stl_content = ModelVoxelizerService.getStlContent(bmax_model,true);
-		if(input_format == "stl")then
-			if(output_format == "stl")then
-				content = preview_stl_content;
-			elseif(output_format == "bmax")then
-				content = ModelVoxelizerService.getBMaxContent(bmax_model);
-			end
-			if(bBase64)then
-				preview_stl_content = Encoding.base64(preview_stl_content);
-				content = Encoding.base64(content);
+		local preview_stl_content = ModelVoxelizerService.getStlContent(bmax_model);
+		if(output_format == "stl")then
+			--same as preview_stl_content
+			content = nil;
+		elseif(output_format == "bmax")then
+			content = ModelVoxelizerService.getBMaxContent(bmax_model);
+		end
+		if(bBase64)then
+			LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.processed() encode base64.");
+
+			if(preview_stl_content and type(preview_stl_content) == "table")then
+				preview_stl_content = table.concat(preview_stl_content);
 			end
 
-			if(ModelVoxelizerService.callback)then
-				ModelVoxelizerService.callback({
-					preview_stl_content = preview_stl_content,
-					content = content,
-				});
+			if(content and type(content) == "table")then
+				content = table.concat(content);
 			end
+			if(preview_stl_content)then
+				preview_stl_content = Encoding.base64(preview_stl_content);
+			end
+			if(content)then
+				content = Encoding.base64(content);
+			end
+		end
+		LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.processed() finished!");
+
+		if(ModelVoxelizerService.callback)then
+			ModelVoxelizerService.callback({
+				preview_stl_content = preview_stl_content,
+				content = content,
+			});
 		end
 		--reset
 		ModelVoxelizerService.reset();
@@ -225,6 +249,8 @@ function ModelVoxelizerService.start(buffer,bBase64, block_length,input_format,o
 	end
 	if(input_format == "stl")then
 		polygons,aabb = ModelVoxelizerService.load_stl(data);
+	elseif(input_format == "bmax")then
+		polygons,aabb = ModelVoxelizerService.load_bmax(data);
 	end
 	local polygons_len = #polygons;
 	local thread_num = ModelVoxelizerService.getThreadNum(polygons,block_length);
@@ -254,6 +280,27 @@ function ModelVoxelizerService.start(buffer,bBase64, block_length,input_format,o
 	end
 end
 -- return an array of { pos = {x,y,z}, normal = {x,y,z}, } and an instance of <ShapeBox>
+function ModelVoxelizerService.load_bmax(buffer)
+	if(not buffer)then
+		return
+	end
+	local bmax_model = BMaxModel:new();
+	bmax_model:LoadContent(buffer);
+
+	local writer = STLWriter:new();
+	writer:LoadModel(bmax_model);
+	writer:SetYAxisUp(false);
+
+	local polygons,aabb = writer:GetPolygons();
+	return polygons,aabb;
+end
+--[[ return an array of { 
+	{ pos = {x,y,z}, normal = {x,y,z}, 
+	{ pos = {x,y,z}, normal = {x,y,z}, 
+	{ pos = {x,y,z}, normal = {x,y,z}, 
+} 
+	and an instance of <ShapeBox>
+--]]
 function ModelVoxelizerService.load_stl(buffer)
 	if(not buffer)then
 		return
@@ -307,23 +354,26 @@ function ModelVoxelizerService.getStlContent(bmax_model,bConcat)
 	return content;
 	
 end
-function ModelVoxelizerService.getBMaxContent(bmax_model)
+function ModelVoxelizerService.getBMaxContent(bmax_model,bConcat)
 	if(not bmax_model)then
 		return
 	end
 	LOG.std(nil, "info", "ModelVoxelizer", "getBMaxContent");
-	return bmax_model:GetText();
+	local content = bmax_model:GetTextList();
+	if(bConcat)then
+		content = table.concat(content);
+	end
+	return content;
 end
 
-function ModelVoxelizerService.test(input_filename,output_filename,num)
+function ModelVoxelizerService.test(input_filename,output_filename,bBase64,num,input_format,output_format)
 	local file = ParaIO.open(input_filename, "r");
 	if(file:IsValid()) then
 		local text = file:GetText();
-		local bBase64 = true;
 		if(bBase64)then
 			text = Encoding.base64(text);
 		end
-		ModelVoxelizerService.start(text,bBase64,num or 16,nil,nil,function(msg)
+		ModelVoxelizerService.start(text,bBase64,num or 16,input_format,output_format,function(msg)
 			local preview_stl_content = msg.preview_stl_content;
 			local content = msg.content;
 			ParaIO.DeleteFile(output_filename);
@@ -332,13 +382,10 @@ function ModelVoxelizerService.test(input_filename,output_filename,num)
 				if(bBase64)then
 					preview_stl_content = Encoding.unbase64(preview_stl_content);
 				end
-					out_file:WriteString(preview_stl_content);
---
-				--if(preview_stl_content_list)then
-					--local k,line;
-					--for k,line in ipairs(preview_stl_content_list) do
-					--end
-				--end
+				local k,line;
+				for k,line in ipairs(content) do
+					out_file:WriteString(line);
+				end
 				out_file:close();
 			end
 			NPL.load("(gl)script/ide/MessageBox.lua");

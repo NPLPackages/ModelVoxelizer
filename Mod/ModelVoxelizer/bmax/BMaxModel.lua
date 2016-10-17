@@ -71,7 +71,15 @@ function BMaxModel:Load(bmax_filename)
 		return self:LoadFromBlocks(blocks);
 	end
 end
-
+function BMaxModel:LoadContent(content)
+	if(not content)then return end
+	local xmlRoot = ParaXML.LuaXML_ParseString(content);
+	self:ParseHeader(xmlRoot);
+	local blocks = self:ParseBlocks(xmlRoot);
+	if(blocks) then
+		return self:LoadFromBlocks(blocks);
+	end
+end
 -- public: load from array of blocks
 -- @param blocks: array of {x,y,z,id, data, serverdata}
 function BMaxModel:LoadFromBlocks(blocks)
@@ -253,25 +261,40 @@ function BMaxModel:GetTotalTriangleCount()
 	end	
 	return cnt;
 end
---get plain bmax text
-function BMaxModel:GetText()
+--get plain bmax content text list
+function BMaxModel:GetTextList()
+	local result = {};
+	local function write_string(s)
+		table.insert(result,s);
+	end
+	write_string("<pe:blocktemplate>\n");
+	write_string("<pe:blocks>\n");
+	write_string("{\n");
 	local blocks = commonlib.copy(self.blocks);
 	local k,v;
 	for k,v in ipairs(blocks) do
-		if(not v[4])then
-			v[4] = 10;
+		local node = {};
+		commonlib.partialcopy(node,v);
+		if(not node[4])then
+			node[4] = 10;
 		end
+		write_string("  " .. commonlib.serialize(node) .. ",\n");
 	end
-	local content = string.format("<pe:blocktemplate><pe:blocks>%s</pe:blocks></pe:blocktemplate>",commonlib.serialize(blocks));
-	return content;
+	write_string("}\n");
+	write_string("</pe:blocks>\n");
+	write_string("</pe:blocktemplate>");
+	return result;
 end
 -- sava as plain text file
 function BMaxModel:SaveAsText(output_file_name)
-	local text = self:GetText();
+	local text_list = self:GetTextList();
 	ParaIO.CreateDirectory(output_file_name);
 	local file = ParaIO.open(output_file_name, "w");
 	if(file:IsValid()) then
-		file:WriteString(text);
+		local k,v;
+		for k,v in ipairs(text_list) do
+			file:WriteString(v);
+		end
 		file:close();
 		return true;
 	end

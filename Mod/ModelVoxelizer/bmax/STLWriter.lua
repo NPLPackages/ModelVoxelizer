@@ -16,7 +16,9 @@ writer:SaveAsBinary(filename);
 ]]
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BMaxModel.lua");
 NPL.load("(gl)script/ide/math/vector.lua");
+NPL.load("(gl)script/ide/math/ShapeBox.lua");
 local vector3d = commonlib.gettable("mathlib.vector3d");
+local ShapeBox = commonlib.gettable("mathlib.ShapeBox");
 local BMaxModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxModel");
 local STLWriter = commonlib.inherit(nil,commonlib.gettable("Mod.ModelVoxelizer.bmax.STLWriter"));
 
@@ -178,4 +180,51 @@ function STLWriter:GetTextList()
 	write_string(string.format("endsolid %s\n",name));
 	LOG.std(nil, "info", "STLWriter", "content_list:%d",#content_list);
 	return content_list;
+end
+function STLWriter:GetPolygons()
+	local polygons = {};
+	local aabb = ShapeBox:new();
+	local is_first_setted = false;
+	local function write_value(polygon_vertices,v)
+		local x = v.position[1];
+		local y = v.position[2];
+		local z = v.position[3];
+		local pos = {x,y,z};
+		local normal = {v.normal[1],v.normal[2],v.normal[3],};
+		table.insert(polygon_vertices,{
+			pos = pos,
+			normal = normal,
+		});
+
+		if(not is_first_setted)then
+			aabb:SetPointBox(x,y,z);
+			is_first_setted = true;
+		end
+		aabb:Extend(x,y,z);
+
+	end
+	local cube;
+	for _, cube in ipairs(self.model.m_blockModels) do
+		for nFaceIndex = 0, cube:GetFaceCount()-1 do
+			local v1,v2,v3 = cube:GetFaceTriangle2(nFaceIndex, 0);
+
+			local polygon_vertices = {};
+			write_value(polygon_vertices,v1);
+			write_value(polygon_vertices,v2);
+			write_value(polygon_vertices,v3);
+			table.insert(polygons,polygon_vertices);
+
+			v1,v2,v3 = cube:GetFaceTriangle2(nFaceIndex, 1);
+
+			local polygon_vertices = {};
+			write_value(polygon_vertices,v1);
+			write_value(polygon_vertices,v2);
+			write_value(polygon_vertices,v3);
+
+			table.insert(polygons,polygon_vertices);
+
+
+		end
+	end	
+	return polygons,aabb;
 end
