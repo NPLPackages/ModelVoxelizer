@@ -135,7 +135,6 @@ function ModelVoxelizerService.processed(msg)
 	local output_format = ModelVoxelizerService.output_format;
 	local bBase64 = ModelVoxelizerService.bBase64;
 	ModelVoxelizerService.deleteThreadID(thread_id);
-	LOG.std(nil, "info", "ModelVoxelizerService", "working_thread_list length :%d",ModelVoxelizerService.getLength());
 	local k,v;
 	for k,v in ipairs(blocks) do
 		local id = string.format("id_%d_%d_%d",v[1],v[2],v[3]);
@@ -144,6 +143,7 @@ function ModelVoxelizerService.processed(msg)
 			table.insert(ModelVoxelizerService.blocks,v);
 		end
 	end
+	LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.blocks length :%d",#ModelVoxelizerService.blocks);
 
 	if(ModelVoxelizerService.isEmpty())then
 		local bmax_model = BMaxModel:new();
@@ -174,8 +174,6 @@ function ModelVoxelizerService.processed(msg)
 				content = Encoding.base64(content);
 			end
 		end
-		LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.processed() finished!");
-
 		if(ModelVoxelizerService.callback)then
 			ModelVoxelizerService.callback({
 				preview_stl_content = preview_stl_content,
@@ -184,6 +182,7 @@ function ModelVoxelizerService.processed(msg)
 		end
 		--reset
 		ModelVoxelizerService.reset();
+		LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.processed() finished! blocks length :%d",#ModelVoxelizerService.blocks);
 	end
 end
 function ModelVoxelizerService.getLength()

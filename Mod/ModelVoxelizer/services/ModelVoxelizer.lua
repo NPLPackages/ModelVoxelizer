@@ -91,16 +91,17 @@ end
 -- @param block_length: max block number
 -- return aabb,changed_polygon
 function ModelVoxelizer:buildShapeAABB(shape_aabb,polygon,block_length)
+	local min_x,min_y,min_z = shape_aabb:GetMinValues();
 	local center = shape_aabb.mCenter;
 	local extent = shape_aabb.mExtents;
 	local changed_polygon = {};
 	local first_node = polygon[1];
-	local box = static_shape_box:SetPointBox(first_node.pos[1],first_node.pos[2],first_node.pos[3]);
+	local box = static_shape_box:SetPointBox(first_node.pos[1]- min_x,first_node.pos[2]- min_y,first_node.pos[3]- min_z);
 	local k,v;
 	for k,v in ipairs(polygon) do
-		local x = v.pos[1] - center[1];
-		local y = v.pos[2] - center[2];
-		local z = v.pos[3] - center[3];
+		local x = v.pos[1] - min_x;
+		local y = v.pos[2] - min_y;
+		local z = v.pos[3] - min_z;
 
 		box:Extend(x,y,z);
 		table_insert(changed_polygon,{
@@ -137,10 +138,7 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 					static_shape_aabb:SetCenterExtentValues(x * block_size,y * block_size,z * block_size,half_size,half_size,half_size);
 					if(self:intersectPolygon(static_shape_aabb,changed_polygon))then
 						block_maps[id] = true;
-						local x_index = x + half_num;
-						local y_index = y + half_num;
-						local z_index = z + half_num;
-						table_insert(blocks,{x_index,y_index,z_index});
+						table_insert(blocks,{x,y,z});
 					end
 				end
 			end
