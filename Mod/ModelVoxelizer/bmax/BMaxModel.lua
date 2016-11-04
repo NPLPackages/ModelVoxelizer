@@ -271,14 +271,13 @@ function BMaxModel:GetTextList()
 	write_string("<pe:blocks>\n");
 	write_string("{\n");
 	local blocks = commonlib.copy(self.blocks);
-	local k,v;
 	for k,v in ipairs(blocks) do
-		local node = {};
-		commonlib.partialcopy(node,v);
-		if(not node[4])then
-			node[4] = 10;
+		local block_id, block_data = v[4], v[5];
+		block_id = block_id or 10; -- default to 10 color block
+		if(not block_data and block_id == 10) then
+			block_data = 0x00f; -- default to blue color
 		end
-		write_string("  " .. commonlib.serialize(node) .. ",\n");
+		write_string(format("  {%d,%d,%d,%d,%d},\n", v[1], v[2], v[3], block_id, block_data or 0));
 	end
 	write_string("}\n");
 	write_string("</pe:blocks>\n");
