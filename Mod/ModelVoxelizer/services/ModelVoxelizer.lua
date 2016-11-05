@@ -1,6 +1,6 @@
 --[[
 Title: ModelVoxelizer
-Author(s): leio
+Author(s): leio, LiXizhi (minor fix performance)
 Date: 2016/10/16
 Desc: 
 use the lib:
@@ -75,9 +75,10 @@ function ModelVoxelizer:buildBMaxModel_blocks(polygons,aabb,block_length)
 	local block_maps = {};
 	local blocks = {};
 
-	local polygon;
+	local aabb = ShapeAABB:new();
 	for __, polygon in ipairs(polygons) do
-		local aabb,changed_polygon = self:buildShapeAABB(shape_aabb,polygon,block_length)
+		local changed_polygon;
+		aabb,changed_polygon = self:buildShapeAABB(shape_aabb,polygon,block_length, aabb)
 		self:buildBlocks(blocks,block_maps,changed_polygon,aabb,block_length,block_size,half_num,half_size);
 	end
 	
@@ -89,11 +90,10 @@ end
 -- @param shape_aabb:an instance of <ShapeAABB>
 -- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, }
 -- @param block_length: max block number
+-- @param aabb: inout of ShapeAABB
 -- return aabb,changed_polygon
-function ModelVoxelizer:buildShapeAABB(shape_aabb,polygon,block_length)
+function ModelVoxelizer:buildShapeAABB(shape_aabb, polygon,block_length, aabb)
 	local min_x,min_y,min_z = shape_aabb:GetMinValues();
-	local center = shape_aabb.mCenter;
-	local extent = shape_aabb.mExtents;
 	local changed_polygon = {};
 	local first_node = polygon[1];
 	local box = static_shape_box:SetPointBox(first_node.pos[1]- min_x,first_node.pos[2]- min_y,first_node.pos[3]- min_z);
@@ -106,13 +106,19 @@ function ModelVoxelizer:buildShapeAABB(shape_aabb,polygon,block_length)
 		box:Extend(x,y,z);
 		table_insert(changed_polygon,{
 			pos = {x,y,z},
-			normat = {v.normal_x,v.normal_y,v.normal_z}
+			-- normal = {v.normal_x,v.normal_y,v.normal_z}
 		})
 	end
-	local aabb = ShapeAABB:new();
+	aabb = aabb or ShapeAABB:new();
 	aabb:SetMinMax(box:GetMin(), box:GetMax());
 	return aabb,changed_polygon;
 end
+
+-- get sparse index
+local function GetSparseIndex(x, y, z)
+	return y*30000*30000+x*30000+z;
+end
+
 -- build blocks for BMaxModel.
 function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block_max_num,block_size,half_num,half_size)
 	local center = aabb.mCenter;
@@ -133,7 +139,7 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 	for x = start_x,end_x do
 		for y = start_y,end_y do
 			for z = start_z,end_z do
-				local id = string_format("id_%d_%d_%d",x,y,z);
+				local id = GetSparseIndex(x,y,z);
 				if(not block_maps[id])then
 					static_shape_aabb:SetCenterExtentValues(x * block_size,y * block_size,z * block_size,half_size,half_size,half_size);
 					if(self:intersectPolygon(static_shape_aabb,changed_polygon))then
@@ -152,6 +158,6 @@ function ModelVoxelizer:intersectPolygon(aabb,polygon)
 	local a = static_vector_1:init(polygon[1].pos);
 	local b = static_vector_2:init(polygon[2].pos);
 	local c = static_vector_3:init(polygon[3].pos);
-	return Collision.isIntersectionTriangleAABB (a, b, c, aabb); 
+	return Collision.isIntersectionTriangleAABB(a, b, c, aabb); 
 end
 

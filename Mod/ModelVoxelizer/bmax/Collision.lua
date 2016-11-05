@@ -7,7 +7,7 @@ use the lib:
 ------------------------------------------------------------
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/Collision.lua");
 local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
-Collision.isIntersectionTriangleAABB (a, b, c, aabb); 
+Collision.isIntersectionTriangleAABB(a, b, c, aabb); 
 ------------------------------------------------------------
 ]]
 
@@ -35,13 +35,14 @@ local static_vector_a22 = CSGVector:new();
 local math_abs = math.abs;
 local math_min = math.min;
 local math_max = math.max;
+
 -- based on http:--www.gamedev.net/topic/534655-aabb-triangleplane-intersection--distance-to-plane-is-incorrect-i-have-solved-it/
 --			https:--gist.github.com/yomotsu/d845f21e2e1eb49f647f
 -- a: <CSGVector>, -- vertex of a triangle
 -- b: <CSGVector>, -- vertex of a triangle
 -- c: <CSGVector>, -- vertex of a triangle
 -- aabb: <ShapeAABB>
-function Collision.isIntersectionTriangleAABB (a, b, c, aabb) 
+function Collision.isIntersectionTriangleAABB(a, b, c, aabb) 
 	local p0, p1, p2, r;
   
 	-- Compute box center and extents of AABoundingBox (if not already given in that format)
@@ -182,7 +183,7 @@ function Collision.isIntersectionTriangleAABB (a, b, c, aabb)
 end
 -- aabb: <ShapeAABB>
 -- Plane: <CSGPlane>
-function Collision.isIntersectionAABBPlane ( aabb, Plane )
+function Collision.isIntersectionAABBPlane( aabb, Plane )
 	local center = static_vector_1:init(aabb.mCenter[1],aabb.mCenter[2],aabb.mCenter[3]);
 	local extents = static_vector_2:init(aabb.mExtents[1],aabb.mExtents[2],aabb.mExtents[3]);
 
