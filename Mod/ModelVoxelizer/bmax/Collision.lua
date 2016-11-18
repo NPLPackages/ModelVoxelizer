@@ -35,8 +35,8 @@ local static_vector_a22 = CSGVector:new();
 local math_abs = math.abs;
 local math_min = math.min;
 local math_max = math.max;
--- based on http:--www.gamedev.net/topic/534655-aabb-triangleplane-intersection--distance-to-plane-is-incorrect-i-have-solved-it/
---			https:--gist.github.com/yomotsu/d845f21e2e1eb49f647f
+-- based on http://www.gamedev.net/topic/534655-aabb-triangleplane-intersection--distance-to-plane-is-incorrect-i-have-solved-it/
+--			https://gist.github.com/yomotsu/d845f21e2e1eb49f647f
 -- a: <CSGVector>, -- vertex of a triangle
 -- b: <CSGVector>, -- vertex of a triangle
 -- c: <CSGVector>, -- vertex of a triangle

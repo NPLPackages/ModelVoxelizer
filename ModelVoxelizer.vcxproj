@@ -25,6 +25,7 @@
     <None Include="Mod\ModelVoxelizer\bmax\BMaxNode.lua" />
     <None Include="Mod\ModelVoxelizer\bmax\Collision.lua" />
     <None Include="Mod\ModelVoxelizer\bmax\STLWriter.lua" />
+    <None Include="Mod\ModelVoxelizer\bmax\VertexWriter.lua" />
     <None Include="Mod\ModelVoxelizer\services\ModelVoxelizer.lua" />
     <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua" />
   </ItemGroup>

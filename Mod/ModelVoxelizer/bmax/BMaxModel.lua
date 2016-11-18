@@ -197,6 +197,7 @@ function BMaxModel:CalculateVisibleBlocks()
 	for _, node in pairs(self.m_nodes) do
 		local cube = self:TessellateBlock(node.x,node.y,node.z);
 		if(cube:GetVerticesCount() > 0)then
+			cube:setColor(node.block_data);
 			table.insert(self.m_blockModels,cube);
 		end
 	end

@@ -19,7 +19,7 @@ NPL.load("(gl)Mod/ModelVoxelizer/bmax/BMaxModel.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/STLWriter.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/Collision.lua");
 NPL.load("(gl)Mod/NplCadLibrary/csg/CSGVector.lua");
-
+NPL.load("(gl)script/ide/System/Core/Color.lua");
 local vector3d = commonlib.gettable("mathlib.vector3d");
 local ShapeBox = commonlib.gettable("mathlib.ShapeBox");
 local ShapeAABB = commonlib.gettable("mathlib.ShapeAABB");
@@ -28,6 +28,7 @@ local BMaxModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxModel");
 local STLWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.STLWriter");
 local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
 local CSGVector = commonlib.gettable("Mod.NplCadLibrary.csg.CSGVector");
+local Color = commonlib.gettable("System.Core.Color");
 local ModelVoxelizerService = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService");
 local MAX_NUM = 256;
 local static_vector_1 = CSGVector:new();
@@ -46,10 +47,10 @@ function ModelVoxelizer:ctor()
 end
 
 -- Get all of blocks 
--- @param polygons:an array of {pos = { x,y,z}, normal = {normal_x,normal_y,normal_z},  }
+-- @param polygons:an array of {pos = { x,y,z}, normal = {normal_x,normal_y,normal_z},  color = {r,g,b}, }
 -- @param aabb:an instance of <ShapeBox>
 -- @param block_length:the max length of block which can be voxel.
--- return an array of {x_index,y_index,z_index}
+-- return an array of {x_index,y_index,z_index,constant_id_10,color_value}
 function ModelVoxelizer:buildBMaxModel_blocks(polygons,aabb,block_length)
 	if(not polygons or not aabb)then
 		return;
@@ -87,7 +88,7 @@ function ModelVoxelizer:buildBMaxModel_blocks(polygons,aabb,block_length)
 end
 -- build polygon's aabb
 -- @param shape_aabb:an instance of <ShapeAABB>
--- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, }
+-- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, color = {r,g,b}, }
 -- @param block_length: max block number
 -- return aabb,changed_polygon
 function ModelVoxelizer:buildShapeAABB(shape_aabb,polygon,block_length)
@@ -103,10 +104,13 @@ function ModelVoxelizer:buildShapeAABB(shape_aabb,polygon,block_length)
 		local y = v.pos[2] - min_y;
 		local z = v.pos[3] - min_z;
 
+		local normal = v.normal;
+		local color = v.color;
 		box:Extend(x,y,z);
 		table_insert(changed_polygon,{
 			pos = {x,y,z},
-			normat = {v.normal_x,v.normal_y,v.normal_z}
+			normal = {normal[1],normal[2],normal[3]},
+			color = {color[1],color[2],color[3]},
 		})
 	end
 	local aabb = ShapeAABB:new();
@@ -119,7 +123,6 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 	local extents = aabb.mExtents;
 	local min = aabb:GetMin();
 	local max = aabb:GetMax();
-	
 	local start_x = math_floor(min[1]/block_size);
 	local start_y = math_floor(min[2]/block_size);
 	local start_z = math_floor(min[3]/block_size);
@@ -128,6 +131,17 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 	local end_y = math_floor(max[2]/block_size);
 	local end_z = math_floor(max[3]/block_size);
 
+	local bHasColor,r,g,b = self:getAverageColor(changed_polygon);
+	--color block id
+	local block_id = 10;
+	local color;
+	if(bHasColor)then
+		r = math.floor(r * 255);
+		g = math.floor(g * 255);
+		b = math.floor(b * 255);
+		color = Color.RGBA_TO_DWORD(r, g, b);
+		color = Color.convert32_16(color);
+	end
 	--LOG.std(nil, "info", "ModelVoxelizer", "buildBlocks x:%d->%d y:%d->%d z:%d->%d", start_x,end_x,start_y,end_y,start_z,end_z);
 	local x,y,z;
 	for x = start_x,end_x do
@@ -138,7 +152,7 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 					static_shape_aabb:SetCenterExtentValues(x * block_size,y * block_size,z * block_size,half_size,half_size,half_size);
 					if(self:intersectPolygon(static_shape_aabb,changed_polygon))then
 						block_maps[id] = true;
-						table_insert(blocks,{x,y,z});
+						table_insert(blocks,{x,y,z,block_id,color});
 					end
 				end
 			end
@@ -147,11 +161,38 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 end
 -- hittest between aabb and polygon.
 -- @param aabb:an instance of <ShapeAABB>
--- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, }
+-- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, color = {r,g,b}, }
 function ModelVoxelizer:intersectPolygon(aabb,polygon)
 	local a = static_vector_1:init(polygon[1].pos);
 	local b = static_vector_2:init(polygon[2].pos);
 	local c = static_vector_3:init(polygon[3].pos);
 	return Collision.isIntersectionTriangleAABB (a, b, c, aabb); 
+end
+--r g b range is [0,1]
+-- reutrn bHasColor,r,g,b
+function ModelVoxelizer:getAverageColor(polygon)
+	if(not polygon)then
+		return
+	end
+	local bHasColor = false;
+	local r = 0;
+	local g = 0;
+	local b = 0;
+	local len = 0;
+	for k,v in ipairs(polygon) do
+		local color = v.color;
+		if(color)then
+			r = r + color[1];
+			g = g + color[2];
+			b = b + color[3];
+			len = len + 1;
+
+			bHasColor = true;
+		end
+	end
+	r = r / len;
+	g = g / len;
+	b = b / len;
+	return bHasColor,r,g,b;
 end
 

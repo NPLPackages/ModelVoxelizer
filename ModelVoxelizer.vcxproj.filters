@@ -39,5 +39,8 @@
     <None Include="Mod\ModelVoxelizer\services\ModelVoxelizerService.lua">
       <Filter>Mod\ModelVoxelizer\services</Filter>
     </None>
+    <None Include="Mod\ModelVoxelizer\bmax\VertexWriter.lua">
+      <Filter>Mod\ModelVoxelizer\bmax</Filter>
+    </None>
   </ItemGroup>
 </Project>

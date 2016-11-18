@@ -25,7 +25,8 @@ NPL.load("(gl)Mod/ModelVoxelizer/bmax/STLWriter.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/Collision.lua");
 NPL.load("(gl)Mod/NplCadLibrary/csg/CSGVector.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/services/ModelVoxelizer.lua");
-
+NPL.load("(gl)script/ide/System/Core/Color.lua");
+NPL.load("(gl)Mod/ModelVoxelizer/bmax/VertexWriter.lua");
 local vector3d = commonlib.gettable("mathlib.vector3d");
 local ShapeBox = commonlib.gettable("mathlib.ShapeBox");
 local ShapeAABB = commonlib.gettable("mathlib.ShapeAABB");
@@ -34,12 +35,14 @@ local BMaxModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxModel");
 local STLWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.STLWriter");
 local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
 local CSGVector = commonlib.gettable("Mod.NplCadLibrary.csg.CSGVector");
+local Color = commonlib.gettable("System.Core.Color");
+local VertexWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.VertexWriter");
 
 local ModelVoxelizer = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizer");
 
 local ModelVoxelizerService = commonlib.inherit(nil,commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService"));
 
-ModelVoxelizerService.max_thread = 10;
+ModelVoxelizerService.max_thread = 1;
 
 ModelVoxelizerService.working_thread_list = {};
 ModelVoxelizerService.blocks = {};
@@ -150,12 +153,14 @@ function ModelVoxelizerService.processed(msg)
 		bmax_model:LoadFromBlocks(ModelVoxelizerService.blocks);	
 
 		local content;
+		local mesh_content;
 		local preview_stl_content = ModelVoxelizerService.getStlContent(bmax_model);
 		if(output_format == "stl")then
 			--same as preview_stl_content
 			content = nil;
 		elseif(output_format == "bmax")then
 			content = ModelVoxelizerService.getBMaxContent(bmax_model);
+			mesh_content = ModelVoxelizerService.getMeshContent(bmax_model);
 		end
 		if(bBase64)then
 			LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.processed() encode base64.");
@@ -178,6 +183,7 @@ function ModelVoxelizerService.processed(msg)
 			ModelVoxelizerService.callback({
 				preview_stl_content = preview_stl_content,
 				content = content,
+				mesh_content = mesh_content,
 			});
 		end
 		--reset
@@ -235,7 +241,6 @@ function ModelVoxelizerService.start(buffer,bBase64, block_length,input_format,o
 	ModelVoxelizerService.block_length = block_length;
 	ModelVoxelizerService.input_format = input_format;
 	ModelVoxelizerService.output_format = output_format ;
-
 	ModelVoxelizerService.callback = callback; 
 
 	local data;
@@ -248,6 +253,8 @@ function ModelVoxelizerService.start(buffer,bBase64, block_length,input_format,o
 	end
 	if(input_format == "stl")then
 		polygons,aabb = ModelVoxelizerService.load_stl(data);
+	elseif(input_format == "colorstl")then
+		polygons,aabb = ModelVoxelizerService.load_color_stl(data);
 	elseif(input_format == "bmax")then
 		polygons,aabb = ModelVoxelizerService.load_bmax(data);
 	end
@@ -294,9 +301,9 @@ function ModelVoxelizerService.load_bmax(buffer)
 	return polygons,aabb;
 end
 --[[ return an array of { 
-	{ pos = {x,y,z}, normal = {x,y,z}, 
-	{ pos = {x,y,z}, normal = {x,y,z}, 
-	{ pos = {x,y,z}, normal = {x,y,z}, 
+	{ pos = {x,y,z}, normal = {x,y,z}, },
+	{ pos = {x,y,z}, normal = {x,y,z}, },
+	{ pos = {x,y,z}, normal = {x,y,z}, },
 } 
 	and an instance of <ShapeBox>
 --]]
@@ -327,6 +334,7 @@ function ModelVoxelizerService.load_stl(buffer)
 			table.insert(polygon_vertices,{
 				pos = {x,y,z},
 				normal = {normal_x,normal_y,normal_z},
+				color = {1,0,0},
 			});
 			if(not is_first_setted)then
 				aabb:SetPointBox(x,y,z);
@@ -337,6 +345,69 @@ function ModelVoxelizerService.load_stl(buffer)
 		table.insert(polygons,polygon_vertices);
 	end
 	return polygons,aabb;
+end
+--[[
+	NOTE:this is not a standard format of stl which included color info.
+	return an array of { 
+	{ pos = {x,y,z}, normal = {x,y,z}, color = {r,g,b} },
+	{ pos = {x,y,z}, normal = {x,y,z}, color = {r,g,b} },
+	{ pos = {x,y,z}, normal = {x,y,z}, color = {r,g,b} },
+} 
+	and an instance of <ShapeBox>
+--]]
+function ModelVoxelizerService.load_color_stl(buffer)
+	if(not buffer)then
+		return
+	end
+	local aabb = ShapeBox:new();
+	local polygons = {};
+	local block;
+	local is_first_setted = false
+	for block in string.gfind(buffer, "facet(.-)endfacet") do
+		-- get normal value
+		local normal_x,normal_y,normal_z = string.match(block,"normal%s+(.-)%s+(.-)%s+(.-)\n");
+		normal_x = tonumber(normal_x);
+		normal_y = tonumber(normal_y);
+		normal_z = tonumber(normal_z);
+
+		local polygon_vertices = {};
+		local vertex_line;
+		-- get vertices value
+		for vertex_line in string.gfind(block,"vertex(.-)\n") do
+			local x,y,z,r,g,b = string.match(vertex_line,"%s+(.+)%s+(.+)%s+(.+)%s+(.+)%s+(.+)%s+(.+)");
+			x = tonumber(x);
+			y = tonumber(y);
+			z = tonumber(z);
+			r = tonumber(r);
+			g = tonumber(g);
+			b = tonumber(b);
+
+			table.insert(polygon_vertices,{
+				pos = {x,y,z},
+				normal = {normal_x,normal_y,normal_z},
+				--range is 0 - 1.
+				color = {r,g,b},
+			});
+			if(not is_first_setted)then
+				aabb:SetPointBox(x,y,z);
+				is_first_setted = true;
+			end
+			aabb:Extend(x,y,z);
+		end
+		table.insert(polygons,polygon_vertices);
+	end
+	return polygons,aabb;
+end
+function ModelVoxelizerService.getMeshContent(bmax_model)
+	if(not bmax_model)then
+		return
+	end
+	LOG.std(nil, "info", "ModelVoxelizer", "getMeshContent");
+	local writer = VertexWriter:new();
+	writer:LoadModel(bmax_model);
+	writer:SetYAxisUp(false);
+	local vertices,indices,normals,colors = writer:toMesh();
+	return {vertices,indices,normals,colors};
 end
 function ModelVoxelizerService.getStlContent(bmax_model,bConcat)
 	if(not bmax_model)then

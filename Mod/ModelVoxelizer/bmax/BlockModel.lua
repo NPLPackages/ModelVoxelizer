@@ -18,6 +18,18 @@ function BlockModel:ctor()
 	self.m_vertices = {};
 end
 
+function BlockModel:setColor(color)
+	if(not color)then
+		return
+	end
+	local k,v;
+	for k,v in ipairs(self.m_vertices) do
+		v.color = color;
+	end
+end
+function BlockModel:GetShareData()
+	return self.share_data;
+end
 -- init the model as a cube
 function BlockModel:InitCube()
 	self:MakeCube();
