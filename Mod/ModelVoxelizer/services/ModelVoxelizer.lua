@@ -171,9 +171,13 @@ end
 -- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, color = {r,g,b}, }
 function ModelVoxelizer:intersectPolygon(aabb,polygon)
 	local a = static_vector_1:init(polygon[1].pos);
-	local b = static_vector_2:init(polygon[2].pos);
-	local c = static_vector_3:init(polygon[3].pos);
-	return Collision.isIntersectionTriangleAABB(a, b, c, aabb); 
+	for i=3, #polygon do
+		local b = static_vector_2:init(polygon[i-1].pos);
+		local c = static_vector_3:init(polygon[i].pos);
+		if(Collision.isIntersectionTriangleAABB(a, b, c, aabb)) then
+			return true;
+		end
+	end
 end
 --r g b range is [0,1]
 -- reutrn bHasColor,r,g,b
