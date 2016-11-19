@@ -104,9 +104,11 @@ function ModelVoxelizerService.deleteThreadID(id)
 	end
 end
 function ModelVoxelizerService.processing(msg)
+	msg.polygons = NPL.LoadTableFromString(msg.polygons);
 	if(not msg or not msg.polygons)then
 		return
 	end
+		
 	local working_main_thread = msg.working_main_thread;
 	local thread_id = msg.thread_id;
 	local polygons = msg.polygons;
@@ -124,12 +126,13 @@ function ModelVoxelizerService.processing(msg)
 	NPL.activate(string.format("(%s)Mod/ModelVoxelizer/services/ModelVoxelizerService.lua",working_main_thread), {
 		   type = "processed", 
 		   thread_id = thread_id,
-		   blocks = blocks,
+		   blocks = commonlib.serialize_compact(blocks),
 		  });
 end
 -- processed in main thread
 function ModelVoxelizerService.processed(msg)
 	local thread_id = msg.thread_id;
+	msg.blocks = NPL.LoadTableFromString(msg.blocks);
 	local blocks = msg.blocks;
 
 	LOG.std(nil, "info", "ModelVoxelizerService", "processed:%s",tostring(thread_id));
@@ -138,7 +141,7 @@ function ModelVoxelizerService.processed(msg)
 	local output_format = ModelVoxelizerService.output_format;
 	local bBase64 = ModelVoxelizerService.bBase64;
 	ModelVoxelizerService.deleteThreadID(thread_id);
-	local k,v;
+	
 	for k,v in ipairs(blocks) do
 		local id = string.format("id_%d_%d_%d",v[1],v[2],v[3]);
 		if(not ModelVoxelizerService.blocks_map[id])then
@@ -146,38 +149,36 @@ function ModelVoxelizerService.processed(msg)
 			table.insert(ModelVoxelizerService.blocks,v);
 		end
 	end
-	LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.blocks length :%d",#ModelVoxelizerService.blocks);
+	
 
 	if(ModelVoxelizerService.isEmpty())then
+		local fromTime = ParaGlobal.timeGetTime();
 		local bmax_model = BMaxModel:new();
 		bmax_model:LoadFromBlocks(ModelVoxelizerService.blocks);	
+		-- e.g. tesselating 6220 blocks used 0.344 seconds
+		LOG.std(nil, "info", "ModelVoxelizerService", "tesselating %d blocks used %.3f seconds", #(ModelVoxelizerService.blocks), (ParaGlobal.timeGetTime()-fromTime)/1000);	
 
 		local content;
 		local mesh_content;
-		local preview_stl_content = ModelVoxelizerService.getStlContent(bmax_model);
+		local preview_stl_content = ModelVoxelizerService.getStlContent(bmax_model, true);
+		
 		if(output_format == "stl")then
 			--same as preview_stl_content
 			content = nil;
 		elseif(output_format == "bmax")then
-			content = ModelVoxelizerService.getBMaxContent(bmax_model);
+			content = ModelVoxelizerService.getBMaxContent(bmax_model, true);
 			mesh_content = ModelVoxelizerService.getMeshContent(bmax_model);
 		end
+
 		if(bBase64)then
-			LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.processed() encode base64.");
-
-			if(preview_stl_content and type(preview_stl_content) == "table")then
-				preview_stl_content = table.concat(preview_stl_content);
-			end
-
-			if(content and type(content) == "table")then
-				content = table.concat(content);
-			end
+			local fromTime = ParaGlobal.timeGetTime();
 			if(preview_stl_content)then
 				preview_stl_content = Encoding.base64(preview_stl_content);
 			end
 			if(content)then
 				content = Encoding.base64(content);
 			end
+			LOG.std(nil, "info", "ModelVoxelizerService", "base64 encoding finished in %.3f seconds", (ParaGlobal.timeGetTime()-fromTime)/1000);
 		end
 		if(ModelVoxelizerService.callback)then
 			ModelVoxelizerService.callback({
@@ -188,7 +189,7 @@ function ModelVoxelizerService.processed(msg)
 		end
 		--reset
 		ModelVoxelizerService.reset();
-		LOG.std(nil, "info", "ModelVoxelizerService", "ModelVoxelizerService.processed() finished! blocks length :%d",#ModelVoxelizerService.blocks);
+		LOG.std(nil, "info", "ModelVoxelizerService", "finished with %d blocks", #(blocks));
 	end
 end
 function ModelVoxelizerService.getLength()
@@ -276,7 +277,7 @@ function ModelVoxelizerService.start(buffer,bBase64, block_length,input_format,o
 				type = "processing", 
 				thread_id = k,
 				working_main_thread = working_main_thread,
-				polygons = thread_polygons,
+				polygons = commonlib.serialize_compact(thread_polygons),
 				aabb = aabb,
 				bBase64 = bBase64,
 				block_length = block_length,
@@ -402,18 +403,22 @@ function ModelVoxelizerService.getMeshContent(bmax_model)
 	if(not bmax_model)then
 		return
 	end
-	LOG.std(nil, "info", "ModelVoxelizer", "getMeshContent");
+	
+	local fromTime = ParaGlobal.timeGetTime();
 	local writer = VertexWriter:new();
 	writer:LoadModel(bmax_model);
 	writer:SetYAxisUp(false);
 	local vertices,indices,normals,colors = writer:toMesh();
+	-- e.g. getMeshContent finished in 0.063 seconds for 6220 blocks
+	LOG.std(nil, "info", "ModelVoxelizer", "getMeshContent finished in %.3f seconds", (ParaGlobal.timeGetTime()-fromTime)/1000);
+
 	return {vertices,indices,normals,colors};
 end
 function ModelVoxelizerService.getStlContent(bmax_model,bConcat)
 	if(not bmax_model)then
 		return
 	end
-	LOG.std(nil, "info", "ModelVoxelizer", "getStlContent");
+	local fromTime = ParaGlobal.timeGetTime();
 	local writer = STLWriter:new();
 	writer:LoadModel(bmax_model);
 	writer:SetYAxisUp(false);
@@ -421,18 +426,21 @@ function ModelVoxelizerService.getStlContent(bmax_model,bConcat)
 	if(bConcat)then
 		content = table.concat(content);
 	end
+	-- e.g. getStlContent finished in 0.672 seconds for 6220 blocks
+	LOG.std(nil, "info", "ModelVoxelizer", "getStlContent finished in %.3f seconds", (ParaGlobal.timeGetTime()-fromTime)/1000);
 	return content;
-	
 end
 function ModelVoxelizerService.getBMaxContent(bmax_model,bConcat)
 	if(not bmax_model)then
 		return
 	end
-	LOG.std(nil, "info", "ModelVoxelizer", "getBMaxContent");
+	local fromTime = ParaGlobal.timeGetTime();
 	local content = bmax_model:GetTextList();
 	if(bConcat)then
 		content = table.concat(content);
 	end
+	-- e.g. getBMaxContent finished in 0.109 seconds for 6220 block
+	LOG.std(nil, "info", "ModelVoxelizer", "getBMaxContent finished in %.3f seconds", (ParaGlobal.timeGetTime()-fromTime)/1000);
 	return content;
 end
 
@@ -452,7 +460,6 @@ function ModelVoxelizerService.test(input_filename,output_filename,bBase64,num,i
 				if(bBase64)then
 					preview_stl_content = Encoding.unbase64(preview_stl_content);
 				end
-				local k,line;
 				for k,line in ipairs(content) do
 					out_file:WriteString(line);
 				end
@@ -471,7 +478,7 @@ local function activate()
 	end
 	local type = msg.type;
 	if(type == "processing")then
-		 ModelVoxelizerService.processing(msg);
+		ModelVoxelizerService.processing(msg);
 	elseif(type == "processed")then
 		ModelVoxelizerService.processed(msg);
 	end

@@ -142,7 +142,7 @@ function STLWriter:GetTextList()
 		if(not s)then
 			return
 		end	
-		table.insert(content_list,s);
+		content_list[#content_list+1] = s;
 	end
 	local function write_face(file,vertex_1,vertex_2,vertex_3)
 		local a = vertex_3 - vertex_1;

@@ -61,7 +61,8 @@ function ModelVoxelizer:buildBMaxModel_blocks(polygons,aabb,block_length)
 	block_length = math.max(block_length,1);
 
 	local shape_aabb = ShapeAABB:new();
-	shape_aabb:SetMinMax(aabb:GetMin(),aabb:GetMax());
+	local vOffsetMin = aabb:GetMin();
+	shape_aabb:SetMinMax(vOffsetMin,aabb:GetMax());
 
 	local extent = shape_aabb.mExtents;
 	local max_dist = math.max(extent[1],extent[2]);
@@ -69,53 +70,42 @@ function ModelVoxelizer:buildBMaxModel_blocks(polygons,aabb,block_length)
 	max_dist = max_dist * 2;
 
 	block_size = max_dist / block_length;
+	local timeStart = ParaGlobal.timeGetTime();
 	LOG.std(nil, "info", "ModelVoxelizer", "buildBMaxModel polygons:%d max_dist:%f block_length:%d(MAX_NUM:%d) block_size:%f", #polygons,max_dist,block_length,MAX_NUM,block_size);
 
-	local half_num = math_ceil(block_length/2);
 	local half_size = block_size * 0.5;
 
 	local block_maps = {};
 	local blocks = {};
 
 	local aabb = ShapeAABB:new();
-	for __, polygon in ipairs(polygons) do
-		local changed_polygon;
-		aabb,changed_polygon = self:buildShapeAABB(shape_aabb,polygon,block_length, aabb)
-		self:buildBlocks(blocks,block_maps,changed_polygon,aabb,block_length,block_size,half_num,half_size);
-	end
 	
-	LOG.std(nil, "info", "ModelVoxelizer", "blocks length:%d",#blocks);
-
+	for __, polygon in ipairs(polygons) do
+		aabb = self:getPolygonAABB(polygon,aabb);
+		self:buildBlocks(blocks, block_maps, polygon, aabb, vOffsetMin, block_length, block_size, half_size);
+	end
+	-- e.g. Finished in 0.547 seconds, generated 6220 blocks from 7405 polygons
+	LOG.std(nil, "info", "ModelVoxelizer", "Finished in %.3f seconds, generated %d blocks from %d polygons", (ParaGlobal.timeGetTime()-timeStart)/1000, #blocks, #polygons);
 	return blocks;
 end
--- build polygon's aabb
--- @param shape_aabb:an instance of <ShapeAABB>
--- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, color = {r,g,b}, }
--- @param block_length: max block number
--- return aabb,changed_polygon
-function ModelVoxelizer:buildShapeAABB(shape_aabb, polygon,block_length, aabb)
-	local min_x,min_y,min_z = shape_aabb:GetMinValues();
-	local changed_polygon = {};
-	local first_node = polygon[1];
-	local box = static_shape_box:SetPointBox(first_node.pos[1]- min_x,first_node.pos[2]- min_y,first_node.pos[3]- min_z);
-	local k,v;
-	for k,v in ipairs(polygon) do
-		local x = v.pos[1] - min_x;
-		local y = v.pos[2] - min_y;
-		local z = v.pos[3] - min_z;
 
-		local normal = v.normal;
-		local color = v.color;
-		box:Extend(x,y,z);
-		table_insert(changed_polygon,{
-			pos = {x,y,z},
-			normal = {normal[1],normal[2],normal[3]},
-			color = {color[1],color[2],color[3]},
-		})
+-- compute a single polygon's aabb box
+-- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, color = {r,g,b}, }
+-- @param aabb: inout value. if nil, a new one is created. 
+-- return aabb
+function ModelVoxelizer:getPolygonAABB(polygon, aabb)
+	local first_node = polygon[1];
+	local pos = first_node.pos;
+	local box = static_shape_box:SetPointBox(pos[1],pos[2],pos[3]);
+	for i = 2, #polygon do
+		pos = polygon[i].pos;
+		box:Extend(pos[1],pos[2],pos[3]);
 	end
 	aabb = aabb or ShapeAABB:new();
-	aabb:SetMinMax(box:GetMin(), box:GetMax());
-	return aabb,changed_polygon;
+	local vMin = box:GetMin();
+	local vMax = box:GetMax();
+	aabb:SetMinMaxValues(vMin[1],vMin[2],vMin[3], vMax[1], vMax[2], vMax[3]);
+	return aabb;
 end
 
 -- get sparse index
@@ -124,21 +114,21 @@ local function GetSparseIndex(x, y, z)
 end
 
 -- build blocks for BMaxModel.
-function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block_max_num,block_size,half_num,half_size)
-	local center = aabb.mCenter;
-	local extents = aabb.mExtents;
-	local min = aabb:GetMin();
-	local max = aabb:GetMax();
+function ModelVoxelizer:buildBlocks(blocks,block_maps,polygon,aabb, vOffsetMin, block_max_num,block_size, half_size)
+	local min_x,min_y,min_z = vOffsetMin[1], vOffsetMin[2], vOffsetMin[3];
+
+	local start_x, start_y, start_z = aabb:GetMinValues();
+	local end_x, end_y, end_z = aabb:GetMaxValues();
 	
-	local start_x = math_floor(min[1]/block_size);
-	local start_y = math_floor(min[2]/block_size);
-	local start_z = math_floor(min[3]/block_size);
+	start_x = math_floor((start_x - min_x)/block_size);
+	start_y = math_floor((start_y - min_y)/block_size);
+	start_z = math_floor((start_z - min_z)/block_size);
 
-	local end_x = math_floor(max[1]/block_size);
-	local end_y = math_floor(max[2]/block_size);
-	local end_z = math_floor(max[3]/block_size);
+	end_x = math_floor((end_x - min_x)/block_size);
+	end_y = math_floor((end_y - min_y)/block_size);
+	end_z = math_floor((end_z - min_z)/block_size);
 
-	local bHasColor,r,g,b = self:getAverageColor(changed_polygon);
+	local bHasColor,r,g,b = self:getAverageColor(polygon);
 	--color block id
 	local block_id = 10;
 	local color;
@@ -151,15 +141,17 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 	end
 	--LOG.std(nil, "info", "ModelVoxelizer", "buildBlocks x:%d->%d y:%d->%d z:%d->%d", start_x,end_x,start_y,end_y,start_z,end_z);
 	static_shape_aabb:SetCenterExtentValues(0,0,0,half_size,half_size,half_size);
+
+	local offset_x,offset_y,offset_z = min_x + half_size, min_y + half_size, min_z + half_size;
 	for x = start_x,end_x do
 		for y = start_y,end_y do
 			for z = start_z,end_z do
 				local id = GetSparseIndex(x,y,z);
 				if(not block_maps[id])then
-					static_shape_aabb.mCenter:set(x * block_size + half_size,y * block_size + half_size,z * block_size + half_size);
-					if(self:intersectPolygon(static_shape_aabb,changed_polygon))then
+					static_shape_aabb.mCenter:set(x * block_size + offset_x,y * block_size + offset_y,z * block_size + offset_z);
+					if(self:intersectPolygon(static_shape_aabb, polygon))then
 						block_maps[id] = true;
-						table_insert(blocks,{x,y,z,block_id,color});
+						blocks[#blocks+1] = {x,y,z,block_id,color};
 					end
 				end
 			end
@@ -201,8 +193,10 @@ function ModelVoxelizer:getAverageColor(polygon)
 			bHasColor = true;
 		end
 	end
-	r = r / len;
-	g = g / len;
-	b = b / len;
-	return bHasColor,r,g,b;
+	if(bHasColor) then
+		r = r / len;
+		g = g / len;
+		b = b / len;
+		return bHasColor,r,g,b;
+	end
 end
