@@ -143,20 +143,20 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,changed_polygon,aabb,block
 	local block_id = 10;
 	local color;
 	if(bHasColor)then
-		r = math.floor(r * 255);
-		g = math.floor(g * 255);
-		b = math.floor(b * 255);
+		r = math_floor(r * 255);
+		g = math_floor(g * 255);
+		b = math_floor(b * 255);
 		color = Color.RGBA_TO_DWORD(r, g, b);
 		color = Color.convert32_16(color);
 	end
 	--LOG.std(nil, "info", "ModelVoxelizer", "buildBlocks x:%d->%d y:%d->%d z:%d->%d", start_x,end_x,start_y,end_y,start_z,end_z);
-	local x,y,z;
+	static_shape_aabb:SetCenterExtentValues(0,0,0,half_size,half_size,half_size);
 	for x = start_x,end_x do
 		for y = start_y,end_y do
 			for z = start_z,end_z do
 				local id = GetSparseIndex(x,y,z);
 				if(not block_maps[id])then
-					static_shape_aabb:SetCenterExtentValues(x * block_size,y * block_size,z * block_size,half_size,half_size,half_size);
+					static_shape_aabb.mCenter:set(x * block_size + half_size,y * block_size + half_size,z * block_size + half_size);
 					if(self:intersectPolygon(static_shape_aabb,changed_polygon))then
 						block_maps[id] = true;
 						table_insert(blocks,{x,y,z,block_id,color});
