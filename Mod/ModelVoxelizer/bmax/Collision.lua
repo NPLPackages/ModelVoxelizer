@@ -50,14 +50,14 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	local extents = static_vector_2:init(aabb.mExtents[1],aabb.mExtents[2],aabb.mExtents[3]);
 
 	-- Translate triangle as conceptually moving AABB to origin
-	local v0 = a:minus(center);
-    local v1 = b:minus(center);
-    local v2 = c:minus(center);
+	local v0 = a:clone_from_pool():minusInplace(center);
+    local v1 = b:clone_from_pool():minusInplace(center);
+    local v2 = c:clone_from_pool():minusInplace(center);
 
 	-- Compute edge vectors for triangle
-	local f0 = v1:minus(v0);
-    local f1 = v2:minus(v1);
-    local f2 = v0:minus(v2);
+	local f0 = v1:clone_from_pool():minusInplace(v0);
+    local f1 = v2:clone_from_pool():minusInplace(v1);
+    local f2 = v0:clone_from_pool():minusInplace(v2);
 
 	-- Test axes a00..a22 (category 3)
 	local a00 = static_vector_a00:init( 0, -f0.z, f0.y );
@@ -176,7 +176,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  -- Test separating axis corresponding to triangle face normal (category 2)
 	  -- Face Normal is -ve as Triangle is clockwise winding (and XNA uses -z for into screen)
 	  local plane = static_csg_plane;
-	  plane.normal = f1:cross( f0 ):unit();
+	  plane.normal = f1:crossInplace( f0 ):unitInplace();
 	  plane.w = plane.normal:dot( a );
   
 	  return Collision.isIntersectionAABBPlane( aabb, plane );
