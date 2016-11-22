@@ -46,8 +46,8 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	local p0, p1, p2, r;
   
 	-- Compute box center and extents of AABoundingBox (if not already given in that format)
-	local center = static_vector_1:init(aabb.mCenter[1],aabb.mCenter[2],aabb.mCenter[3]);
-	local extents = static_vector_2:init(aabb.mExtents[1],aabb.mExtents[2],aabb.mExtents[3]);
+	local center = aabb.mCenter;
+	local extents = aabb.mExtents;
 
 	-- Translate triangle as conceptually moving AABB to origin
 	local v0 = a:clone_from_pool():minusInplace(center);
@@ -184,8 +184,8 @@ end
 -- aabb: <ShapeAABB>
 -- Plane: <CSGPlane>
 function Collision.isIntersectionAABBPlane( aabb, Plane )
-	local center = static_vector_1:init(aabb.mCenter[1],aabb.mCenter[2],aabb.mCenter[3]);
-	local extents = static_vector_2:init(aabb.mExtents[1],aabb.mExtents[2],aabb.mExtents[3]);
+	local center = aabb.mCenter;
+	local extents = aabb.mExtents;
 
 	local r = extents[1] * math_abs( Plane.normal[1] ) + extents[2] * math_abs( Plane.normal[2] ) + extents[3] * math_abs( Plane.normal[3] );
 	local s = Plane.normal:dot( center ) - Plane.w;
