@@ -21,7 +21,6 @@ NPL.load("(gl)Mod/ModelVoxelizer/bmax/Collision.lua");
 NPL.load("(gl)Mod/NplCadLibrary/csg/CSGVector.lua");
 NPL.load("(gl)script/ide/System/Core/Color.lua");
 
-local vector3d = commonlib.gettable("mathlib.vector3d");
 local ShapeBox = commonlib.gettable("mathlib.ShapeBox");
 local ShapeAABB = commonlib.gettable("mathlib.ShapeAABB");
 local Encoding = commonlib.gettable("System.Encoding");

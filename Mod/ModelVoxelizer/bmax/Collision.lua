@@ -60,21 +60,21 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
     local f2 = v0:clone_from_pool():minusInplace(v2);
 
 	-- Test axes a00..a22 (category 3)
-	local a00 = static_vector_a00:init( 0, -f0.z, f0.y );
-    local a01 = static_vector_a01:init( 0, -f1.z, f1.y );
-    local a02 = static_vector_a02:init( 0, -f2.z, f2.y );
-    local a10 = static_vector_a10:init( f0.z, 0, -f0.x );
-    local a11 = static_vector_a11:init( f1.z, 0, -f1.x );
-    local a12 = static_vector_a12:init( f2.z, 0, -f2.x );
-    local a20 = static_vector_a20:init( -f0.y, f0.x, 0 );
-    local a21 = static_vector_a21:init( -f1.y, f1.x, 0 );
-    local a22 = static_vector_a22:init( -f2.y, f2.x, 0 );
+	local a00 = static_vector_a00:init( 0, -f0[3], f0[2] );
+    local a01 = static_vector_a01:init( 0, -f1[3], f1[2] );
+    local a02 = static_vector_a02:init( 0, -f2[3], f2[2] );
+    local a10 = static_vector_a10:init( f0[3], 0, -f0[1] );
+    local a11 = static_vector_a11:init( f1[3], 0, -f1[1] );
+    local a12 = static_vector_a12:init( f2[3], 0, -f2[1] );
+    local a20 = static_vector_a20:init( -f0[2], f0[1], 0 );
+    local a21 = static_vector_a21:init( -f1[2], f1[1], 0 );
+    local a22 = static_vector_a22:init( -f2[2], f2[1], 0 );
 
 	-- Test axis a00
 	p0 = v0:dot( a00 );
 	p1 = v1:dot( a00 );
 	p2 = v2:dot( a00 );
-	r = extents.y * math_abs( f0.z ) + extents.z * math_abs( f0.y );
+	r = extents[2] * math_abs( f0[3] ) + extents[3] * math_abs( f0[2] );
 
 	if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r )then
 		return false; -- Axis is a separating axis
@@ -83,7 +83,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a01 );
 	  p1 = v1:dot( a01 );
 	  p2 = v2:dot( a01 );
-	  r = extents.y * math_abs( f1.z ) + extents.z * math_abs( f1.y );
+	  r = extents[2] * math_abs( f1[3] ) + extents[3] * math_abs( f1[2] );
 
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
@@ -93,7 +93,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a02 );
 	  p1 = v1:dot( a02 );
 	  p2 = v2:dot( a02 );
-	  r = extents.y * math_abs( f2.z ) + extents.z * math_abs( f2.y );
+	  r = extents[2] * math_abs( f2[3] ) + extents[3] * math_abs( f2[2] );
 
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
@@ -103,7 +103,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a10 );
 	  p1 = v1:dot( a10 );
 	  p2 = v2:dot( a10 );
-	  r = extents.x * math_abs( f0.z ) + extents.z * math_abs( f0.x );
+	  r = extents[1] * math_abs( f0[3] ) + extents[3] * math_abs( f0[1] );
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
 	  end
@@ -112,7 +112,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a11 );
 	  p1 = v1:dot( a11 );
 	  p2 = v2:dot( a11 );
-	  r = extents.x * math_abs( f1.z ) + extents.z * math_abs( f1.x );
+	  r = extents[1] * math_abs( f1[3] ) + extents[3] * math_abs( f1[1] );
 
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
@@ -122,7 +122,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a12 );
 	  p1 = v1:dot( a12 );
 	  p2 = v2:dot( a12 );
-	  r = extents.x * math_abs( f2.z ) + extents.z * math_abs( f2.x );
+	  r = extents[1] * math_abs( f2[3] ) + extents[3] * math_abs( f2[1] );
 
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
@@ -132,7 +132,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a20 );
 	  p1 = v1:dot( a20 );
 	  p2 = v2:dot( a20 );
-	  r = extents.x * math_abs( f0.y ) + extents.y * math_abs( f0.x );
+	  r = extents[1] * math_abs( f0[2] ) + extents[2] * math_abs( f0[1] );
 
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
@@ -142,7 +142,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a21 );
 	  p1 = v1:dot( a21 );
 	  p2 = v2:dot( a21 );
-	  r = extents.x * math_abs( f1.y ) + extents.y * math_abs( f1.x );
+	  r = extents[1] * math_abs( f1[2] ) + extents[2] * math_abs( f1[1] );
 
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
@@ -152,7 +152,7 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  p0 = v0:dot( a22 );
 	  p1 = v1:dot( a22 );
 	  p2 = v2:dot( a22 );
-	  r = extents.x * math_abs( f2.y ) + extents.y * math_abs( f2.x );
+	  r = extents[1] * math_abs( f2[2] ) + extents[2] * math_abs( f2[1] );
 
 	  if ( math_max( -math_max( p0, p1, p2 ), math_min( p0, p1, p2 ) ) > r ) then
 		return false; -- Axis is a separating axis
@@ -160,16 +160,16 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 
 	   -- Test the three axes corresponding to the face normals of AABB b (category 1).
 	  -- Exit if...
-	  -- ... [-extents.x, extents.x] and [min(v0.x,v1.x,v2.x), max(v0.x,v1.x,v2.x)] do not overlap
-	  if ( math_max( v0.x, v1.x, v2.x ) < -extents.x or math_min( v0.x, v1.x, v2.x ) > extents.x ) then
+	  -- ... [-extents[1], extents[1]] and [min(v0[1],v1[1],v2[1]), max(v0[1],v1[1],v2[1])] do not overlap
+	  if ( math_max( v0[1], v1[1], v2[1] ) < -extents[1] or math_min( v0[1], v1[1], v2[1] ) > extents[1] ) then
 		return false;
 	  end
-	  -- ... [-extents.y, extents.y] and [min(v0.y,v1.y,v2.y), max(v0.y,v1.y,v2.y)] do not overlap
-	  if ( math_max( v0.y, v1.y, v2.y ) < -extents.y or math_min( v0.y, v1.y, v2.y ) > extents.y ) then
+	  -- ... [-extents[2], extents[2]] and [min(v0[2],v1[2],v2[2]), max(v0[2],v1[2],v2[2])] do not overlap
+	  if ( math_max( v0[2], v1[2], v2[2] ) < -extents[2] or math_min( v0[2], v1[2], v2[2] ) > extents[2] ) then
 		return false;
 	  end
-	  -- ... [-extents.z, extents.z] and [min(v0.z,v1.z,v2.z), max(v0.z,v1.z,v2.z)] do not overlap
-	  if ( math_max( v0.z, v1.z, v2.z ) < -extents.z or math_min( v0.z, v1.z, v2.z ) > extents.z ) then
+	  -- ... [-extents[3], extents[3]] and [min(v0[3],v1[3],v2[3]), max(v0[3],v1[3],v2[3])] do not overlap
+	  if ( math_max( v0[3], v1[3], v2[3] ) < -extents[3] or math_min( v0[3], v1[3], v2[3] ) > extents[3] ) then
 		return false;
 	  end
 
@@ -187,7 +187,7 @@ function Collision.isIntersectionAABBPlane( aabb, Plane )
 	local center = static_vector_1:init(aabb.mCenter[1],aabb.mCenter[2],aabb.mCenter[3]);
 	local extents = static_vector_2:init(aabb.mExtents[1],aabb.mExtents[2],aabb.mExtents[3]);
 
-	local r = extents.x * math_abs( Plane.normal.x ) + extents.y * math_abs( Plane.normal.y ) + extents.z * math_abs( Plane.normal.z );
+	local r = extents[1] * math_abs( Plane.normal[1] ) + extents[2] * math_abs( Plane.normal[2] ) + extents[3] * math_abs( Plane.normal[3] );
 	local s = Plane.normal:dot( center ) - Plane.w;
 
 	return math_abs( s ) <= r;
