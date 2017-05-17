@@ -23,7 +23,6 @@ NPL.load("(gl)script/ide/System/Encoding/base64.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BMaxModel.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/STLWriter.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/Collision.lua");
-NPL.load("(gl)Mod/NplCadLibrary/csg/CSGVector.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/services/ModelVoxelizer.lua");
 NPL.load("(gl)script/ide/System/Core/Color.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/VertexWriter.lua");
@@ -34,7 +33,6 @@ local Encoding = commonlib.gettable("System.Encoding");
 local BMaxModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxModel");
 local STLWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.STLWriter");
 local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
-local CSGVector = commonlib.gettable("Mod.NplCadLibrary.csg.CSGVector");
 local Color = commonlib.gettable("System.Core.Color");
 local VertexWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.VertexWriter");
 

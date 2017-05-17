@@ -18,8 +18,8 @@ NPL.load("(gl)script/ide/System/Encoding/base64.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/BMaxModel.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/STLWriter.lua");
 NPL.load("(gl)Mod/ModelVoxelizer/bmax/Collision.lua");
-NPL.load("(gl)Mod/NplCadLibrary/csg/CSGVector.lua");
 NPL.load("(gl)script/ide/System/Core/Color.lua");
+NPL.load("(gl)script/ide/math/vector.lua");
 
 local ShapeBox = commonlib.gettable("mathlib.ShapeBox");
 local ShapeAABB = commonlib.gettable("mathlib.ShapeAABB");
@@ -27,13 +27,14 @@ local Encoding = commonlib.gettable("System.Encoding");
 local BMaxModel = commonlib.gettable("Mod.ModelVoxelizer.bmax.BMaxModel");
 local STLWriter = commonlib.gettable("Mod.ModelVoxelizer.bmax.STLWriter");
 local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
-local CSGVector = commonlib.gettable("Mod.NplCadLibrary.csg.CSGVector");
 local Color = commonlib.gettable("System.Core.Color");
+local vector3d = commonlib.gettable("mathlib.vector3d");
+
 local ModelVoxelizerService = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService");
 local MAX_NUM = 256;
-local static_vector_1 = CSGVector:new();
-local static_vector_2 = CSGVector:new();
-local static_vector_3 = CSGVector:new();
+local static_vector_1 = vector3d:new();
+local static_vector_2 = vector3d:new();
+local static_vector_3 = vector3d:new();
 local static_shape_aabb = ShapeAABB:new();
 local static_shape_box = ShapeBox:new();
 
@@ -161,10 +162,10 @@ end
 -- @param aabb:an instance of <ShapeAABB>
 -- @param polygon:an array of {pos = {x,y,z}, normal = {normal_x,normal_y,normal_z}, color = {r,g,b}, }
 function ModelVoxelizer:intersectPolygon(aabb,polygon)
-	local a = static_vector_1:init(polygon[1].pos);
+	local a = static_vector_1:set(polygon[1].pos);
 	for i=3, #polygon do
-		local b = static_vector_2:init(polygon[i-1].pos);
-		local c = static_vector_3:init(polygon[i].pos);
+		local b = static_vector_2:set(polygon[i-1].pos);
+		local c = static_vector_3:set(polygon[i].pos);
 		if(Collision.isIntersectionTriangleAABB(a, b, c, aabb)) then
 			return true;
 		end

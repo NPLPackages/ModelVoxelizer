@@ -12,25 +12,27 @@ Collision.isIntersectionTriangleAABB(a, b, c, aabb);
 ]]
 
 NPL.load("(gl)script/ide/math/ShapeAABB.lua");
-NPL.load("(gl)Mod/NplCadLibrary/csg/CSGVector.lua");
-NPL.load("(gl)Mod/NplCadLibrary/csg/CSGPlane.lua");
-local ShapeAABB = commonlib.gettable("mathlib.ShapeAABB");
-local CSGVector = commonlib.gettable("Mod.NplCadLibrary.csg.CSGVector");
-local CSGPlane = commonlib.gettable("Mod.NplCadLibrary.csg.CSGPlane");
-local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
-local static_vector_1 = CSGVector:new();
-local static_vector_2 = CSGVector:new();
-local static_csg_plane = CSGPlane:new();
+NPL.load("(gl)script/ide/math/vector.lua");
+NPL.load("(gl)script/ide/math/Plane.lua");
 
-local static_vector_a00 = CSGVector:new();
-local static_vector_a01 = CSGVector:new();
-local static_vector_a02 = CSGVector:new();
-local static_vector_a10 = CSGVector:new();
-local static_vector_a11 = CSGVector:new();
-local static_vector_a12 = CSGVector:new();
-local static_vector_a20 = CSGVector:new();
-local static_vector_a21 = CSGVector:new();
-local static_vector_a22 = CSGVector:new();
+local vector3d = commonlib.gettable("mathlib.vector3d");
+local Plane = commonlib.gettable("mathlib.Plane");
+local ShapeAABB = commonlib.gettable("mathlib.ShapeAABB");
+local Collision = commonlib.gettable("Mod.ModelVoxelizer.bmax.Collision");
+
+local static_vector_1 = vector3d:new();
+local static_vector_2 = vector3d:new();
+local static_csg_plane = Plane:new();
+
+local static_vector_a00 = vector3d:new();
+local static_vector_a01 = vector3d:new();
+local static_vector_a02 = vector3d:new();
+local static_vector_a10 = vector3d:new();
+local static_vector_a11 = vector3d:new();
+local static_vector_a12 = vector3d:new();
+local static_vector_a20 = vector3d:new();
+local static_vector_a21 = vector3d:new();
+local static_vector_a22 = vector3d:new();
 
 local math_abs = math.abs;
 local math_min = math.min;
@@ -38,9 +40,9 @@ local math_max = math.max;
 
 -- based on http:--www.gamedev.net/topic/534655-aabb-triangleplane-intersection--distance-to-plane-is-incorrect-i-have-solved-it/
 --			https:--gist.github.com/yomotsu/d845f21e2e1eb49f647f
--- a: <CSGVector>, -- vertex of a triangle
--- b: <CSGVector>, -- vertex of a triangle
--- c: <CSGVector>, -- vertex of a triangle
+-- a: <vector3d>, -- vertex of a triangle
+-- b: <vector3d>, -- vertex of a triangle
+-- c: <vector3d>, -- vertex of a triangle
 -- aabb: <ShapeAABB>
 function Collision.isIntersectionTriangleAABB(a, b, c, aabb) 
 	local p0, p1, p2, r;
@@ -50,25 +52,26 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	local extents = aabb.mExtents;
 
 	-- Translate triangle as conceptually moving AABB to origin
-	local v0 = a:clone_from_pool():minusInplace(center);
-    local v1 = b:clone_from_pool():minusInplace(center);
-    local v2 = c:clone_from_pool():minusInplace(center);
+    local v0 = a:clone_from_pool():sub(center);
+    local v1 = b:clone_from_pool():sub(center);
+    local v2 = c:clone_from_pool():sub(center);
+
 
 	-- Compute edge vectors for triangle
-	local f0 = v1:clone_from_pool():minusInplace(v0);
-    local f1 = v2:clone_from_pool():minusInplace(v1);
-    local f2 = v0:clone_from_pool():minusInplace(v2);
+    local f0 = v1:clone_from_pool():sub(v0);
+    local f1 = v2:clone_from_pool():sub(v1);
+    local f2 = v0:clone_from_pool():sub(v2);
 
 	-- Test axes a00..a22 (category 3)
-	local a00 = static_vector_a00:init( 0, -f0[3], f0[2] );
-    local a01 = static_vector_a01:init( 0, -f1[3], f1[2] );
-    local a02 = static_vector_a02:init( 0, -f2[3], f2[2] );
-    local a10 = static_vector_a10:init( f0[3], 0, -f0[1] );
-    local a11 = static_vector_a11:init( f1[3], 0, -f1[1] );
-    local a12 = static_vector_a12:init( f2[3], 0, -f2[1] );
-    local a20 = static_vector_a20:init( -f0[2], f0[1], 0 );
-    local a21 = static_vector_a21:init( -f1[2], f1[1], 0 );
-    local a22 = static_vector_a22:init( -f2[2], f2[1], 0 );
+	local a00 = static_vector_a00:set( 0, -f0[3], f0[2] );
+    local a01 = static_vector_a01:set( 0, -f1[3], f1[2] );
+    local a02 = static_vector_a02:set( 0, -f2[3], f2[2] );
+    local a10 = static_vector_a10:set( f0[3], 0, -f0[1] );
+    local a11 = static_vector_a11:set( f1[3], 0, -f1[1] );
+    local a12 = static_vector_a12:set( f2[3], 0, -f2[1] );
+    local a20 = static_vector_a20:set( -f0[2], f0[1], 0 );
+    local a21 = static_vector_a21:set( -f1[2], f1[1], 0 );
+    local a22 = static_vector_a22:set( -f2[2], f2[1], 0 );
 
 	-- Test axis a00
 	p0 = v0:dot( a00 );
@@ -176,19 +179,21 @@ function Collision.isIntersectionTriangleAABB(a, b, c, aabb)
 	  -- Test separating axis corresponding to triangle face normal (category 2)
 	  -- Face Normal is -ve as Triangle is clockwise winding (and XNA uses -z for into screen)
 	  local plane = static_csg_plane;
-	  plane.normal = f1:crossInplace( f0 ):unitInplace();
-	  plane.w = plane.normal:dot( a );
-  
+	  local normal = f1:cross(f0):normalize();
+	  local w = normal:dot( a );
+      plane:init(normal[1],normal[2],normal[3],w);
+
 	  return Collision.isIntersectionAABBPlane( aabb, plane );
 end
 -- aabb: <ShapeAABB>
--- Plane: <CSGPlane>
-function Collision.isIntersectionAABBPlane( aabb, Plane )
+-- plane: <Plane>
+function Collision.isIntersectionAABBPlane( aabb, plane )
 	local center = aabb.mCenter;
 	local extents = aabb.mExtents;
-
-	local r = extents[1] * math_abs( Plane.normal[1] ) + extents[2] * math_abs( Plane.normal[2] ) + extents[3] * math_abs( Plane.normal[3] );
-	local s = Plane.normal:dot( center ) - Plane.w;
+    local normal = plane:GetNormal();
+    local w = plane[4];
+	local r = extents[1] * math_abs( normal[1] ) + extents[2] * math_abs( normal[2] ) + extents[3] * math_abs( normal[3] );
+	local s = normal:dot( center ) - w;
 
 	return math_abs( s ) <= r;
 end
