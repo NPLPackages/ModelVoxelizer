@@ -79,8 +79,8 @@ function ModelVoxelizer:buildBMaxModel_blocks(polygons,aabb,block_length)
 	local blocks = {};
 
 	local aabb = ShapeAABB:new();
-	
 	for __, polygon in ipairs(polygons) do
+		commonlib.echo("============a");
 		aabb = self:getPolygonAABB(polygon,aabb);
 		self:buildBlocks(blocks, block_maps, polygon, aabb, vOffsetMin, block_length, block_size, half_size);
 	end
@@ -124,9 +124,9 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,polygon,aabb, vOffsetMin, 
 	start_y = math_floor((start_y - min_y)/block_size);
 	start_z = math_floor((start_z - min_z)/block_size);
 
-	end_x = math_floor((end_x - min_x)/block_size);
-	end_y = math_floor((end_y - min_y)/block_size);
-	end_z = math_floor((end_z - min_z)/block_size);
+	end_x = math_ceil((end_x - min_x)/block_size);
+	end_y = math_ceil((end_y - min_y)/block_size);
+	end_z = math_ceil((end_z - min_z)/block_size);
 
 	local bHasColor,r,g,b = self:getAverageColor(polygon);
 	--color block id
@@ -139,7 +139,7 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,polygon,aabb, vOffsetMin, 
 		color = Color.RGBA_TO_DWORD(r, g, b);
 		color = Color.convert32_16(color);
 	end
-	--LOG.std(nil, "info", "ModelVoxelizer", "buildBlocks x:%d->%d y:%d->%d z:%d->%d", start_x,end_x,start_y,end_y,start_z,end_z);
+	LOG.std(nil, "info", "ModelVoxelizer", "buildBlocks x:%d->%d y:%d->%d z:%d->%d", start_x,end_x,start_y,end_y,start_z,end_z);
 	static_shape_aabb:SetCenterExtentValues(0,0,0,half_size,half_size,half_size);
 
 	local offset_x,offset_y,offset_z = min_x + half_size, min_y + half_size, min_z + half_size;
@@ -148,10 +148,18 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,polygon,aabb, vOffsetMin, 
 			for z = start_z,end_z do
 				local id = GetSparseIndex(x,y,z);
 				if(not block_maps[id])then
+					commonlib.echo("================id");
+					commonlib.echo(id);
+					commonlib.echo({x,y,z});
 					static_shape_aabb.mCenter:set(x * block_size + offset_x,y * block_size + offset_y,z * block_size + offset_z);
 					if(self:intersectPolygon(static_shape_aabb, polygon))then
 						block_maps[id] = true;
 						blocks[#blocks+1] = {x,y,z,block_id,color};
+					else
+						commonlib.echo("================xyz");
+						commonlib.echo({x,y,z});
+						commonlib.echo(static_shape_aabb);
+						commonlib.echo(polygon);
 					end
 				end
 			end

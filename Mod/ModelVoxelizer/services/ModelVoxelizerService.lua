@@ -256,6 +256,8 @@ function ModelVoxelizerService.start(buffer,bBase64, block_length,input_format,o
 		polygons,aabb = ModelVoxelizerService.load_color_stl(data);
 	elseif(input_format == "bmax")then
 		polygons,aabb = ModelVoxelizerService.load_bmax(data);
+	elseif(input_format == "csg")then
+		polygons,aabb = ModelVoxelizerService.load_csg(data);
 	end
 	local polygons_len = #polygons;
 	local thread_num = ModelVoxelizerService.getThreadNum(polygons,block_length);
@@ -283,6 +285,68 @@ function ModelVoxelizerService.start(buffer,bBase64, block_length,input_format,o
 				output_format = output_format,
 			});
 	end
+end
+function ModelVoxelizerService.load_csg(csg_node_values)
+	if(not csg_node_values)then
+		return
+	end
+	local aabb = ShapeBox:new();
+	local polygons = {};
+	local is_first_setted;
+	local function read(polygon_vertices,v,n,c)
+		if(not v)then
+			return
+		end
+		local x = v[1];
+		local y = v[2];
+		local z = v[3];
+		table.insert(polygon_vertices,{
+			pos = v,
+			normal = n,
+			color = c,
+		});
+		if(not is_first_setted)then
+			aabb:SetPointBox(x,y,z);
+			is_first_setted = true;
+		end
+		aabb:Extend(x,y,z);
+	end
+	local k,v;
+	for k,v in ipairs(csg_node_values) do
+		local world_matrix = v.world_matrix;
+		local vertices = v.vertices;
+		local indices = v.indices;
+		local normals = v.normals;
+		local colors = v.colors;
+
+		local len = #indices / 3;
+		local i;
+		for i = 0,len - 1 do
+			local polygon_vertices = {};
+			local index_1 = indices[i*3+1];
+			local index_2 = indices[i*3+2];
+			local index_3 = indices[i*3+3];
+
+			local v_1 = vertices[index_1];
+			local v_2 = vertices[index_2];
+			local v_3 = vertices[index_3];
+
+			local n_1 = normals[index_1];
+			local n_2 = normals[index_2];
+			local n_3 = normals[index_3];
+
+			local c_1 = colors[index_1];
+			local c_2 = colors[index_2];
+			local c_3 = colors[index_3];
+			if(v_1 and v_2 and v_3)then
+				read(polygon_vertices,v_1,n_1,c_1);
+				read(polygon_vertices,v_2,n_2,c_2);
+				read(polygon_vertices,v_3,n_3,c_3);
+				table.insert(polygons,polygon_vertices);
+			end
+		end
+	end
+	return polygons,aabb;
 end
 -- return an array of { pos = {x,y,z}, normal = {x,y,z}, } and an instance of <ShapeBox>
 function ModelVoxelizerService.load_bmax(buffer)
