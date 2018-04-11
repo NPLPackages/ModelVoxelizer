@@ -32,6 +32,7 @@ local vector3d = commonlib.gettable("mathlib.vector3d");
 
 local ModelVoxelizerService = commonlib.gettable("Mod.ModelVoxelizer.services.ModelVoxelizerService");
 local MAX_NUM = 256;
+local precision_halfsize = 1.e-6;
 local static_vector_1 = vector3d:new();
 local static_vector_2 = vector3d:new();
 local static_vector_3 = vector3d:new();
@@ -80,7 +81,6 @@ function ModelVoxelizer:buildBMaxModel_blocks(polygons,aabb,block_length)
 
 	local aabb = ShapeAABB:new();
 	for __, polygon in ipairs(polygons) do
-		commonlib.echo("============a");
 		aabb = self:getPolygonAABB(polygon,aabb);
 		self:buildBlocks(blocks, block_maps, polygon, aabb, vOffsetMin, block_length, block_size, half_size);
 	end
@@ -112,21 +112,53 @@ end
 local function GetSparseIndex(x, y, z)
 	return y*30000*30000+x*30000+z;
 end
+-- test
+function ModelVoxelizer:buildBlocks_slow_easy(blocks,block_maps,polygon,aabb, vOffsetMin, block_max_num,block_size, half_size)
+	local start_index = 0;
+	local end_index = block_max_num -1;
+	static_shape_aabb:SetCenterExtentValues(0,0,0,half_size + precision_halfsize,half_size + precision_halfsize,half_size + precision_halfsize);
 
+	local bHasColor,r,g,b = self:getAverageColor(polygon);
+	--color block id
+	local block_id = 10;
+	local color;
+	if(bHasColor)then
+		r = math_floor(r * 255);
+		g = math_floor(g * 255);
+		b = math_floor(b * 255);
+		color = Color.RGBA_TO_DWORD(r, g, b);
+		color = Color.convert32_16(color);
+	end
+	for x = start_index,end_index do
+		for y = start_index,end_index do
+			for z = start_index,end_index do
+				local id = GetSparseIndex(x,y,z);
+				if(not block_maps[id])then
+					static_shape_aabb.mCenter:set(x * block_size + half_size,y * block_size + half_size,z * block_size + half_size);
+					if(self:intersectPolygon(static_shape_aabb, polygon))then
+						block_maps[id] = true;
+						blocks[#blocks+1] = {x,y,z,block_id,color};
+					end
+				end
+			end
+		end
+	end
+
+end
 -- build blocks for BMaxModel.
 function ModelVoxelizer:buildBlocks(blocks,block_maps,polygon,aabb, vOffsetMin, block_max_num,block_size, half_size)
 	local min_x,min_y,min_z = vOffsetMin[1], vOffsetMin[2], vOffsetMin[3];
 
 	local start_x, start_y, start_z = aabb:GetMinValues();
 	local end_x, end_y, end_z = aabb:GetMaxValues();
-	
+
 	start_x = math_floor((start_x - min_x)/block_size);
 	start_y = math_floor((start_y - min_y)/block_size);
 	start_z = math_floor((start_z - min_z)/block_size);
 
-	end_x = math_ceil((end_x - min_x)/block_size);
-	end_y = math_ceil((end_y - min_y)/block_size);
-	end_z = math_ceil((end_z - min_z)/block_size);
+	end_x = math_floor((end_x - min_x)/block_size);
+	end_y = math_floor((end_y - min_y)/block_size);
+	end_z = math_floor((end_z - min_z)/block_size);
 
 	local bHasColor,r,g,b = self:getAverageColor(polygon);
 	--color block id
@@ -140,7 +172,7 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,polygon,aabb, vOffsetMin, 
 		color = Color.convert32_16(color);
 	end
 	LOG.std(nil, "info", "ModelVoxelizer", "buildBlocks x:%d->%d y:%d->%d z:%d->%d", start_x,end_x,start_y,end_y,start_z,end_z);
-	static_shape_aabb:SetCenterExtentValues(0,0,0,half_size,half_size,half_size);
+	static_shape_aabb:SetCenterExtentValues(0,0,0,half_size + precision_halfsize,half_size + precision_halfsize,half_size + precision_halfsize);
 
 	local offset_x,offset_y,offset_z = min_x + half_size, min_y + half_size, min_z + half_size;
 	for x = start_x,end_x do
@@ -148,18 +180,10 @@ function ModelVoxelizer:buildBlocks(blocks,block_maps,polygon,aabb, vOffsetMin, 
 			for z = start_z,end_z do
 				local id = GetSparseIndex(x,y,z);
 				if(not block_maps[id])then
-					commonlib.echo("================id");
-					commonlib.echo(id);
-					commonlib.echo({x,y,z});
 					static_shape_aabb.mCenter:set(x * block_size + offset_x,y * block_size + offset_y,z * block_size + offset_z);
 					if(self:intersectPolygon(static_shape_aabb, polygon))then
 						block_maps[id] = true;
 						blocks[#blocks+1] = {x,y,z,block_id,color};
-					else
-						commonlib.echo("================xyz");
-						commonlib.echo({x,y,z});
-						commonlib.echo(static_shape_aabb);
-						commonlib.echo(polygon);
 					end
 				end
 			end

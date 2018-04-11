@@ -81,23 +81,24 @@ function VertexWriter:toMesh()
 		table.insert(colors,color);
 	end
 	local cube;
-	for _, cube in ipairs(self.model.m_blockModels) do
-		for index = 0, cube:GetVerticesCount()-1 do
-			local start_index = #vertices + 1;
+	for __, cube in ipairs(self.model.m_blockModels) do
+		local cnt = cube:GetVerticesCount() / 4 - 1;
+		for index = 0, cnt do
+			local start_index = index * 4;
 
-			local vertex = cube:GetVertex(index);
-			write_value(vertex)
-
-			local t = math.mod(index,4);
-
-			if(start_index > 1 and t == 0)then
-				table.insert(indices,start_index + 0);
-				table.insert(indices,start_index + 1);
-				table.insert(indices,start_index + 2);
-				table.insert(indices,start_index + 0);
-				table.insert(indices,start_index + 2);
-				table.insert(indices,start_index + 3);
+			local len = #vertices;
+			local k;
+			for k = start_index+1,start_index + 4 do
+				local vertex = cube:GetVertex(k-1);
+				write_value(vertex)
 			end
+
+			table.insert(indices,len + 1);
+			table.insert(indices,len + 2);
+			table.insert(indices,len + 3);
+			table.insert(indices,len + 1);
+			table.insert(indices,len + 3);
+			table.insert(indices,len + 4);
 		end
 	end	
 	return vertices,indices,normals,colors;

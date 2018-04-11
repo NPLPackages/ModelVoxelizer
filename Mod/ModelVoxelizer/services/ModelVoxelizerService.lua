@@ -139,7 +139,6 @@ function ModelVoxelizerService.processed(msg)
 	local output_format = ModelVoxelizerService.output_format;
 	local bBase64 = ModelVoxelizerService.bBase64;
 	ModelVoxelizerService.deleteThreadID(thread_id);
-	
 	for k,v in ipairs(blocks) do
 		local id = string.format("id_%d_%d_%d",v[1],v[2],v[3]);
 		if(not ModelVoxelizerService.blocks_map[id])then
@@ -147,7 +146,6 @@ function ModelVoxelizerService.processed(msg)
 			table.insert(ModelVoxelizerService.blocks,v);
 		end
 	end
-	
 
 	if(ModelVoxelizerService.isEmpty())then
 		local fromTime = ParaGlobal.timeGetTime();
